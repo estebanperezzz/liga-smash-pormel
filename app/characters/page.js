@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
-import { Input } from '../../components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Search, Check, X, Swords } from 'lucide-react';
+import Image from 'next/image';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search, Check, X, Swords, User } from 'lucide-react';
 
 export default function CharactersPage() {
   const [characters, setCharacters] = useState([]);
@@ -163,39 +164,80 @@ export default function CharactersPage() {
       </div>
 
       {/* Characters Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {filteredCharacters.map((character) => (
           <button
             key={character.id}
             onClick={() => handleSelectCharacter(character.id)}
             disabled={!character.available || submitting || mySelection}
             className={`
-              relative p-4 rounded-lg border-2 transition-all
+              relative rounded-lg border-2 transition-all overflow-hidden
               ${character.available 
-                ? 'border-border hover:border-primary hover:shadow-lg cursor-pointer bg-card' 
-                : 'border-muted bg-muted/50 cursor-not-allowed opacity-60'
+                ? 'border-border hover:border-primary hover:shadow-lg cursor-pointer bg-card hover:scale-105' 
+                : 'border-muted bg-muted/30 cursor-not-allowed opacity-60'
               }
               ${mySelection?.characterId === character.id
-                ? 'border-green-500 bg-green-50 dark:bg-green-950'
+                ? 'border-green-500 bg-green-50 dark:bg-green-950 ring-2 ring-green-500'
                 : ''
               }
             `}
           >
-            <div className="aspect-square flex items-center justify-center text-4xl mb-2">
-              {character.available ? '✓' : '✗'}
+            {/* Image Container */}
+            <div className="aspect-square relative bg-gradient-to-br from-muted to-background">
+              {character.image ? (
+                <Image
+                  src={character.image}
+                  alt={character.name}
+                  fill
+                  className="object-contain p-2"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <User className="h-12 w-12 text-muted-foreground" />
+                </div>
+              )}
+              
+              {/* Overlay for unavailable */}
+              {!character.available && (
+                <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                  <X className="h-8 w-8 text-destructive" />
+                </div>
+              )}
+
+              {/* Selected indicator */}
+              {mySelection?.characterId === character.id && (
+                <div className="absolute top-2 right-2">
+                  <div className="bg-green-500 rounded-full p-1">
+                    <Check className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+              )}
             </div>
-            <p className={`text-xs font-medium text-center line-clamp-2 ${
-              character.available ? 'text-foreground' : 'text-muted-foreground'
-            }`}>
-              {character.name}
-            </p>
+
+            {/* Name */}
+            <div className="p-3 border-t">
+              <p className={`text-sm font-medium text-center line-clamp-2 ${
+                character.available ? 'text-foreground' : 'text-muted-foreground'
+              }`}>
+                {character.name}
+              </p>
+              
+              {/* Series badge */}
+              {character.series && character.available && (
+                <p className="text-xs text-muted-foreground text-center mt-1 truncate">
+                  {character.series}
+                </p>
+              )}
+            </div>
+
+            {/* Taken badge */}
             {!character.available && (
-              <Badge variant="destructive" className="absolute -top-2 -right-2 text-[10px] px-1.5">
-                {character.selectedBy}
-              </Badge>
-            )}
-            {mySelection?.characterId === character.id && (
-              <Check className="absolute -top-2 -right-2 h-6 w-6 text-green-600 bg-white dark:bg-gray-900 rounded-full" />
+              <div className="absolute top-2 left-2">
+                <Badge variant="destructive" className="text-xs">
+                  {character.selectedBy}
+                </Badge>
+              </div>
             )}
           </button>
         ))}
