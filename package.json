@@ -4,13 +4,14 @@
   "description": "Liga Semanal de Super Smash Bros Ultimate - Pormel",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node prisma/seed.js",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate" 
   },
   "dependencies": {
     "next": "^15.1.0",
@@ -31,7 +32,8 @@
     "lucide-react": "^0.468.0",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
-    "date-fns": "^4.1.0"
+    "date-fns": "^4.1.0",
+    "prisma": "^6.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
