@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@prisma/client':
-        specifier: ^5.8.1
-        version: 5.22.0(prisma@6.19.2(typescript@5.9.3))
+        specifier: ^6.1.0
+        version: 6.19.2(prisma@6.19.2(typescript@5.9.3))(typescript@5.9.3)
       '@radix-ui/react-dialog':
         specifier: ^1.1.2
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -53,6 +53,9 @@ importers:
       next:
         specifier: ^15.1.0
         version: 15.5.12(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      prisma:
+        specifier: ^6.1.0
+        version: 6.19.2(typescript@5.9.3)
       react:
         specifier: ^19.0.0
         version: 19.2.4
@@ -68,7 +71,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: ^22.10.2
-        version: 22.19.10
+        version: 22.19.11
       '@types/react':
         specifier: ^19.0.1
         version: 19.2.13
@@ -87,9 +90,6 @@ importers:
       postcss:
         specifier: ^8.4.49
         version: 8.5.6
-      prisma:
-        specifier: ^6.1.0
-        version: 6.19.2(typescript@5.9.3)
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.19
@@ -401,13 +401,16 @@ packages:
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
 
-  '@prisma/client@5.22.0':
-    resolution: {integrity: sha512-M0SVXfyHnQREBKxCgyo7sffrKttwE6R8PMq330MIUF0pTwjUhLbW84pFDlf06B27XyCR++VtjugEnIHdr07SVA==}
-    engines: {node: '>=16.13'}
+  '@prisma/client@6.19.2':
+    resolution: {integrity: sha512-gR2EMvfK/aTxsuooaDA32D8v+us/8AAet+C3J1cc04SW35FPdZYgLF+iN4NDLUgAaUGTKdAB0CYenu1TAgGdMg==}
+    engines: {node: '>=18.18'}
     peerDependencies:
       prisma: '*'
+      typescript: '>=5.1.0'
     peerDependenciesMeta:
       prisma:
+        optional: true
+      typescript:
         optional: true
 
   '@prisma/config@6.19.2':
@@ -854,8 +857,8 @@ packages:
   '@types/json5@0.0.29':
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
 
-  '@types/node@22.19.10':
-    resolution: {integrity: sha512-tF5VOugLS/EuDlTBijk0MqABfP8UxgYazTLo3uIn3b4yJgg26QRbVYJYsDtHrjdDUIRfP70+VfhTTc+CE1yskw==}
+  '@types/node@22.19.11':
+    resolution: {integrity: sha512-BH7YwL6rA93ReqeQS1c4bsPpcfOmJasG+Fkr6Y59q83f9M1WcBRHR2vM+P9eOisYRcN3ujQoiZY8uk5W+1WL8w==}
 
   '@types/phoenix@1.6.7':
     resolution: {integrity: sha512-oN9ive//QSBkf19rfDv45M7eZPi0eEXylht2OLEXicu5b4KoQ1OzXIw+xDSGWxSxe1JmepRR/ZH283vsu518/Q==}
@@ -2775,9 +2778,10 @@ snapshots:
 
   '@nolyfill/is-core-module@1.0.39': {}
 
-  '@prisma/client@5.22.0(prisma@6.19.2(typescript@5.9.3))':
+  '@prisma/client@6.19.2(prisma@6.19.2(typescript@5.9.3))(typescript@5.9.3)':
     optionalDependencies:
       prisma: 6.19.2(typescript@5.9.3)
+      typescript: 5.9.3
 
   '@prisma/config@6.19.2':
     dependencies:
@@ -3237,7 +3241,7 @@ snapshots:
 
   '@types/json5@0.0.29': {}
 
-  '@types/node@22.19.10':
+  '@types/node@22.19.11':
     dependencies:
       undici-types: 6.21.0
 
@@ -3253,7 +3257,7 @@ snapshots:
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 22.19.10
+      '@types/node': 22.19.11
 
   '@typescript-eslint/eslint-plugin@8.55.0(@typescript-eslint/parser@8.55.0(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)':
     dependencies:
