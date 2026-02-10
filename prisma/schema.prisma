@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Modelo de Personajes de Smash Bros
+model Character {
+  id                Int                @id @default(autoincrement())
+  name              String             @unique
+  createdAt         DateTime           @default(now())
+  
+  // Relaciones
+  weeklySelections  WeeklyCharacter[]
+}
+
+// Modelo de Jugadores
+model Player {
+  id                Int                @id @default(autoincrement())
+  name              String             @unique
+  createdAt         DateTime           @default(now())
+  
+  // Relaciones
+  weeklyCharacters  WeeklyCharacter[]
+  matchResults      MatchResult[]
+  weeklyWins        Week[]
+}
+
+// Modelo de Semanas
+model Week {
+  id                Int                @id @default(autoincrement())
+  weekNumber        Int                @unique
+  startDate         DateTime
+  endDate           DateTime
+  winnerId          Int?
+  createdAt         DateTime           @default(now())
+  
+  // Relaciones
+  winner            Player?            @relation(fields: [winnerId], references: [id])
+  weeklyCharacters  WeeklyCharacter[]
+  matches           Match[]
+}
+
+// Modelo de Selección de Personaje Semanal
+model WeeklyCharacter {
+  id                Int                @id @default(autoincrement())
+  playerId          Int
+  characterId       Int
+  weekId            Int
+  createdAt         DateTime           @default(now())
+  
+  // Relaciones
+  player            Player             @relation(fields: [playerId], references: [id])
+  character         Character          @relation(fields: [characterId], references: [id])
+  week              Week               @relation(fields: [weekId], references: [id])
+  
+  // Constraint: Un jugador solo puede seleccionar un personaje por semana
+  @@unique([playerId, weekId])
+  // Constraint: Un personaje no puede ser seleccionado por dos jugadores en la misma semana
+  @@unique([characterId, weekId])
+}
+
+// Modelo de Partidas
+model Match {
+  id                Int                @id @default(autoincrement())
+  weekId            Int
+  playedAt          DateTime           @default(now())
+  
+  // Relaciones
+  week              Week               @relation(fields: [weekId], references: [id])
+  results           MatchResult[]
+}
+
+// Modelo de Resultados de Partida (Jugador + Posición)
+model MatchResult {
+  id                Int                @id @default(autoincrement())
+  matchId           Int
+  playerId          Int
+  position          Int                // 1 = primero, 2 = segundo, etc.
+  points            Int                // Puntos obtenidos en esta partida
+  
+  // Relaciones
+  match             Match              @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player            Player             @relation(fields: [playerId], references: [id])
+  
+  // Constraint: Un jugador solo puede tener una posición por partida
+  @@unique([matchId, playerId])
+  // Constraint: Una posición solo puede ser ocupada por un jugador por partida
+  @@unique([matchId, position])
+}
