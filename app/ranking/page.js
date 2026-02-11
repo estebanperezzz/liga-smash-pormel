@@ -91,11 +91,11 @@ export default function RankingPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[80px]">Posición</TableHead>
-                  <TableHead className="w-[180px]">Jugador</TableHead>
-                  <TableHead className="w-[100px]">Personaje</TableHead>
-                  <TableHead className="text-center">Partidas</TableHead>
-                  <TableHead className="text-right">Puntos</TableHead>
+                  <TableHead className="w-[100px]">Posición</TableHead>
+                  <TableHead>Jugador</TableHead>
+                  <TableHead className="w-[120px] pl-2">Personaje</TableHead>
+                  <TableHead className="text-center w-[100px]">Partidas</TableHead>
+                  <TableHead className="text-right w-[100px]">Puntos</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -108,7 +108,7 @@ export default function RankingPage() {
                       </div>
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="pr-2">
                       <div>
                         <p className="font-semibold text-lg">{player.playerName}</p>
                         {player.character ? (
@@ -128,7 +128,7 @@ export default function RankingPage() {
                       </div>
                     </TableCell>
                     
-                    <TableCell>
+                    <TableCell className="pl-2">
                       <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-gradient-to-br from-muted to-background border-2">
                         {player.characterImage ? (
                           <Image
@@ -162,39 +162,78 @@ export default function RankingPage() {
       {ranking.length >= 3 && (
         <div className="grid grid-cols-3 gap-4">
           {/* 2nd Place */}
-          <Card className="mt-8">
-            <CardHeader className="text-center pb-2">
-              <Medal className="h-8 w-8 text-gray-400 mx-auto" />
-              <CardTitle className="text-lg">2° Lugar</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="font-bold">{ranking[1]?.playerName}</p>
-              <p className="text-2xl font-bold text-primary">{ranking[1]?.totalPoints} pts</p>
-            </CardContent>
+          <Card className="mt-8 overflow-hidden relative">
+            {ranking[1]?.characterImage && (
+              <div className="absolute inset-0 opacity-20">
+                <Image
+                  src={ranking[1].characterImage}
+                  alt=""
+                  fill
+                  className="object-cover blur-sm scale-110"
+                  unoptimized
+                />
+              </div>
+            )}
+            <div className="relative z-10">
+              <CardHeader className="text-center pb-2">
+                <Medal className="h-8 w-8 text-gray-400 mx-auto" />
+                <CardTitle className="text-lg">2° Lugar</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="font-bold">{ranking[1]?.playerName}</p>
+                <p className="text-2xl font-bold text-primary">{ranking[1]?.totalPoints} pts</p>
+              </CardContent>
+            </div>
           </Card>
 
           {/* 1st Place */}
-          <Card className="border-yellow-500 border-2">
-            <CardHeader className="text-center pb-2">
-              <Trophy className="h-10 w-10 text-yellow-500 mx-auto" />
-              <CardTitle>1° Lugar</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="font-bold text-lg">{ranking[0]?.playerName}</p>
-              <p className="text-3xl font-bold text-primary">{ranking[0]?.totalPoints} pts</p>
-            </CardContent>
+          <Card className="border-yellow-500 border-2 overflow-hidden relative">
+            {ranking[0]?.characterImage && (
+              <div className="absolute inset-0 opacity-20">
+                <Image
+                  src={ranking[0].characterImage}
+                  alt=""
+                  fill
+                  className="object-cover blur-sm scale-110"
+                  unoptimized
+                />
+              </div>
+            )}
+            <div className="relative z-10">
+              <CardHeader className="text-center pb-2">
+                <Trophy className="h-10 w-10 text-yellow-500 mx-auto" />
+                <CardTitle>1° Lugar</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="font-bold text-lg">{ranking[0]?.playerName}</p>
+                <p className="text-3xl font-bold text-primary">{ranking[0]?.totalPoints} pts</p>
+              </CardContent>
+            </div>
           </Card>
 
           {/* 3rd Place */}
-          <Card className="mt-8">
-            <CardHeader className="text-center pb-2">
-              <Award className="h-8 w-8 text-orange-600 mx-auto" />
-              <CardTitle className="text-lg">3° Lugar</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="font-bold">{ranking[2]?.playerName}</p>
-              <p className="text-2xl font-bold text-primary">{ranking[2]?.totalPoints} pts</p>
-            </CardContent>
+          <Card className="mt-8 overflow-hidden relative">
+            {ranking[2]?.characterImage && (
+              <div className="absolute inset-0 opacity-20">
+                <Image
+                  src={ranking[2].characterImage}
+                  alt=""
+                  fill
+                  className="object-cover blur-sm scale-110"
+                  unoptimized
+                />
+              </div>
+            )}
+            <div className="relative z-10">
+              <CardHeader className="text-center pb-2">
+                <Award className="h-8 w-8 text-orange-600 mx-auto" />
+                <CardTitle className="text-lg">3° Lugar</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="font-bold">{ranking[2]?.playerName}</p>
+                <p className="text-2xl font-bold text-primary">{ranking[2]?.totalPoints} pts</p>
+              </CardContent>
+            </div>
           </Card>
         </div>
       )}
