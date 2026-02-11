@@ -12,12 +12,14 @@ datasource db {
 model Character {
   id                Int                @id @default(autoincrement())
   name              String             @unique
-  image             String?            // URL de la imagen del personaje
-  series            String?            // Serie de origen (ej: "Super Mario", "The Legend of Zelda")
+  image             String?
+  series            String?
   createdAt         DateTime           @default(now())
   
   // Relaciones
   weeklySelections  WeeklyCharacter[]
+  oldCharacterChanges CharacterChange[] @relation("OldCharacters")
+  newCharacterChanges CharacterChange[] @relation("NewCharacters")
 }
 
 // Modelo de Jugadores
@@ -30,6 +32,7 @@ model Player {
   weeklyCharacters  WeeklyCharacter[]
   matchResults      MatchResult[]
   weeklyWins        Week[]
+  characterChanges  CharacterChange[]
 }
 
 // Modelo de Semanas
@@ -45,6 +48,7 @@ model Week {
   winner            Player?            @relation(fields: [winnerId], references: [id])
   weeklyCharacters  WeeklyCharacter[]
   matches           Match[]
+  characterChanges  CharacterChange[]
 }
 
 // Modelo de Selección de Personaje Semanal
@@ -53,6 +57,7 @@ model WeeklyCharacter {
   playerId          Int
   characterId       Int
   weekId            Int
+  hasChanged        Boolean            @default(false)
   createdAt         DateTime           @default(now())
   
   // Relaciones
@@ -64,6 +69,26 @@ model WeeklyCharacter {
   @@unique([playerId, weekId])
   // Constraint: Un personaje no puede ser seleccionado por dos jugadores en la misma semana
   @@unique([characterId, weekId])
+}
+
+// Modelo de Cambios de Personaje (Historial)
+model CharacterChange {
+  id                Int                @id @default(autoincrement())
+  playerId          Int
+  weekId            Int
+  oldCharacterId    Int
+  newCharacterId    Int
+  changedAt         DateTime           @default(now())
+  reason            String             @default("bottom3_rule")
+  
+  // Relaciones
+  player            Player             @relation(fields: [playerId], references: [id])
+  week              Week               @relation(fields: [weekId], references: [id])
+  oldCharacter      Character          @relation("OldCharacters", fields: [oldCharacterId], references: [id])
+  newCharacter      Character          @relation("NewCharacters", fields: [newCharacterId], references: [id])
+  
+  // Solo un cambio por jugador por semana
+  @@unique([playerId, weekId])
 }
 
 // Modelo de Partidas
@@ -82,8 +107,8 @@ model MatchResult {
   id                Int                @id @default(autoincrement())
   matchId           Int
   playerId          Int
-  position          Int                // 1 = primero, 2 = segundo, etc.
-  points            Int                // Puntos obtenidos en esta partida
+  position          Int
+  points            Int
   
   // Relaciones
   match             Match              @relation(fields: [matchId], references: [id], onDelete: Cascade)

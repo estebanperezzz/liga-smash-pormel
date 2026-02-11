@@ -6,12 +6,13 @@ import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trophy, Medal, Award, User } from 'lucide-react';
+import { Trophy, Medal, Award, User, RefreshCw } from 'lucide-react';
 
 export default function RankingPage() {
   const [ranking, setRanking] = useState([]);
   const [loading, setLoading] = useState(true);
   const [weekInfo, setWeekInfo] = useState(null);
+  const [eligiblePlayers, setEligiblePlayers] = useState([]);
 
   useEffect(() => {
     fetchRanking();
@@ -24,6 +25,16 @@ export default function RankingPage() {
 
       const rankingRes = await axios.get(`/api/weeks/ranking?weekId=${weekRes.data.id}`);
       setRanking(rankingRes.data.ranking);
+
+      // Obtener elegibilidad para cambio
+      try {
+        const eligibleRes = await axios.get(`/api/weeks/eligible-for-change?weekId=${weekRes.data.id}`);
+        if (eligibleRes.data.eligible && eligibleRes.data.eligiblePlayers) {
+          setEligiblePlayers(eligibleRes.data.eligiblePlayers.map(p => p.playerId));
+        }
+      } catch (error) {
+        console.error('Error fetching eligibility:', error);
+      }
     } catch (error) {
       console.error('Error fetching ranking:', error);
     } finally {
@@ -36,6 +47,10 @@ export default function RankingPage() {
     if (index === 1) return <Medal className="h-5 w-5 text-gray-400" />;
     if (index === 2) return <Award className="h-5 w-5 text-orange-600" />;
     return null;
+  };
+
+  const isEligibleForChange = (playerId) => {
+    return eligiblePlayers.includes(playerId);
   };
 
   if (loading) {
@@ -110,7 +125,15 @@ export default function RankingPage() {
 
                     <TableCell className="pr-2">
                       <div>
-                        <p className="font-semibold text-lg">{player.playerName}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-lg">{player.playerName}</p>
+                          {isEligibleForChange(player.playerId) && (
+                            <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950 border-blue-300 text-blue-700 dark:text-blue-300">
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              Cambio disponible
+                            </Badge>
+                          )}
+                        </div>
                         {player.character ? (
                           <div className="flex items-center gap-2 mt-1">
                             <Badge variant="secondary" className="text-xs">
