@@ -1,50 +1,25 @@
-const { PrismaClient } = require('@prisma/client');
-const axios = require('axios');
+﻿const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Mapeo de nombres para coincidir con la API
-const characterMapping = {
-  // Nombres en nuestra lista -> Nombres en la API
-  "Donkey Kong": "donkey-kong",
-  "Dark Samus": "dark-samus",
-  "Ice Climbers": "ice-climbers",
-  "Dr. Mario": "dr-mario",
-  "Young Link": "young-link",
-  "Meta Knight": "meta-knight",
-  "Dark Pit": "dark-pit",
-  "Zero Suit Samus": "zero-suit-samus",
-  "Pokemon Trainer": "pokemon-trainer",
-  "Diddy Kong": "diddy-kong",
-  "King Dedede": "king-dedede",
-  "Toon Link": "toon-link",
-  "Mega Man": "mega-man",
-  "Wii Fit Trainer": "wii-fit-trainer",
-  "Rosalina & Luma": "rosalina-and-luma",
-  "Little Mac": "little-mac",
-  "Mii Brawler": "mii-brawler",
-  "Mii Swordfighter": "mii-swordfighter",
-  "Mii Gunner": "mii-gunner",
-  "Bowser Jr.": "bowser-jr",
-  "Duck Hunt": "duck-hunt",
-  "King K. Rool": "king-k-rool",
-  "Piranha Plant": "piranha-plant",
-  "Banjo & Kazooie": "banjo-and-kazooie",
-  "Min Min": "min-min",
-  "Pyra/Mythra": "pyra-and-mythra",
-};
+const OFFICIAL_IMAGE_BASE = 'https://www.smashbros.com/assets_v2/img/fighter';
 
-// Función para normalizar nombres (convertir a formato slug)
-function normalizeCharacterName(name) {
-  // Si hay un mapeo específico, usarlo
-  if (characterMapping[name]) {
-    return characterMapping[name];
-  }
-  
-  // Convertir a slug: lowercase, reemplazar espacios con guiones, etc.
+// Convierte el nombre del personaje al codeName oficial (usa "_" y "and")
+function toOfficialCodeName(name) {
   return name
     .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '');
+    .replace(/&/g, 'and')
+    .replace(/\//g, ' and ')
+    .replace(/['".]/g, '')
+    .replace(/-/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\s/g, '_')
+    .replace(/_+/g, '_');
+}
+
+function getOfficialImageUrl(name) {
+  const codeName = toOfficialCodeName(name);
+  return `${OFFICIAL_IMAGE_BASE}/${codeName}/main.png`;
 }
 
 // Lista completa de los 89 personajes de Super Smash Bros Ultimate
@@ -66,10 +41,10 @@ const characters = [
 ];
 
 async function main() {
-  console.log('🎮 Iniciando seed de personajes de Smash Bros Ultimate...');
+  console.log('ðŸŽ® Iniciando seed de personajes de Smash Bros Ultimate...');
   
   // Limpiar datos existentes
-  console.log('🗑️  Limpiando datos existentes...');
+  console.log('ðŸ—‘ï¸  Limpiando datos existentes...');
   await prisma.matchResult.deleteMany();
   await prisma.match.deleteMany();
   await prisma.weeklyCharacter.deleteMany();
@@ -77,38 +52,18 @@ async function main() {
   await prisma.player.deleteMany();
   await prisma.character.deleteMany();
   
-  console.log(`📝 Obteniendo información de ${characters.length} personajes desde la API...`);
-  
-  // Obtener todos los personajes de la API
-  let apiCharacters = [];
-  try {
-    const response = await axios.get('https://smashbros-unofficial-api.vercel.app/api/v1/ultimate');
-    apiCharacters = response.data;
-    console.log(`✅ API respondió con ${apiCharacters.length} personajes`);
-  } catch (error) {
-    console.log('⚠️  No se pudo conectar con la API, continuando sin imágenes...');
-  }
-  
-  // Crear mapa de personajes por nombre normalizado
-  const apiCharactersMap = {};
-  apiCharacters.forEach(char => {
-    const slug = char.slug || normalizeCharacterName(char.name);
-    apiCharactersMap[slug] = char;
-  });
-  
+  console.log(`ðŸ“ Generando imÃ¡genes oficiales para ${characters.length} personajes...`);
+
   // Insertar personajes
   let successCount = 0;
   let withImageCount = 0;
   
   for (const characterName of characters) {
     try {
-      const slug = normalizeCharacterName(characterName);
-      const apiChar = apiCharactersMap[slug];
-      
       const characterData = {
         name: characterName,
-        image: apiChar?.images?.portrait || null,
-        series: apiChar?.series || null,
+        image: getOfficialImageUrl(characterName),
+        series: null,
       };
       
       await prisma.character.create({
@@ -118,24 +73,24 @@ async function main() {
       successCount++;
       if (characterData.image) {
         withImageCount++;
-        console.log(`  ✓ ${characterName} (con imagen)`);
+        console.log(`  âœ“ ${characterName} (con imagen)`);
       } else {
-        console.log(`  ○ ${characterName} (sin imagen)`);
+        console.log(`  â—‹ ${characterName} (sin imagen)`);
       }
     } catch (error) {
-      console.log(`  ✗ Error con ${characterName}:`, error.message);
+      console.log(`  âœ— Error con ${characterName}:`, error.message);
     }
   }
   
-  console.log('\n✅ Seed completado exitosamente!');
-  console.log(`✨ ${successCount} personajes agregados a la base de datos`);
-  console.log(`🖼️  ${withImageCount} personajes con imágenes`);
-  console.log(`📊 ${successCount - withImageCount} personajes sin imágenes`);
+  console.log('\nâœ… Seed completado exitosamente!');
+  console.log(`âœ¨ ${successCount} personajes agregados a la base de datos`);
+  console.log(`ðŸ–¼ï¸  ${withImageCount} personajes con imÃ¡genes`);
+  console.log(`ðŸ“Š ${successCount - withImageCount} personajes sin imÃ¡genes`);
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Error durante el seed:', e);
+    console.error('âŒ Error durante el seed:', e);
     process.exit(1);
   })
   .finally(async () => {

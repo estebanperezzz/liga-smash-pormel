@@ -37,6 +37,12 @@ export default function RootLayout({ children }) {
                   Nueva Partida
                 </Link>
                 <Link 
+                  href="/matches" 
+                  className="transition-colors hover:text-primary text-muted-foreground"
+                >
+                  Partidas
+                </Link>
+                <Link 
                   href="/characters" 
                   className="transition-colors hover:text-primary text-muted-foreground"
                 >

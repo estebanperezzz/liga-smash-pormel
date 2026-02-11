@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, Gamepad2, Users, History, Swords, UserPlus, Calendar, Target, Award } from 'lucide-react';
+import { Trophy, Gamepad2, Users, History, Swords, UserPlus, Calendar, Target, Award, List } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -64,6 +64,24 @@ export default function Home() {
             </Button>
           </Link>
 
+          {/* Ver Partidas */}
+          <Link href="/matches">
+            <Button 
+              variant="outline"
+              className="w-full h-auto p-6 flex flex-col items-start gap-3 hover:bg-primary hover:text-primary-foreground transition-all hover:scale-105"
+            >
+              <div className="flex items-center gap-3 w-full">
+                <div className="p-3 rounded-lg bg-indigo-100 dark:bg-indigo-900">
+                  <List className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div className="text-left flex-1">
+                  <h3 className="font-semibold text-lg">Ver Partidas</h3>
+                  <p className="text-sm text-muted-foreground">Historial completo</p>
+                </div>
+              </div>
+            </Button>
+          </Link>
+
           {/* Seleccionar Personaje */}
           <Link href="/characters">
             <Button 
@@ -113,24 +131,6 @@ export default function Home() {
                 <div className="text-left flex-1">
                   <h3 className="font-semibold text-lg">Historial</h3>
                   <p className="text-sm text-muted-foreground">Ver campeones</p>
-                </div>
-              </div>
-            </Button>
-          </Link>
-
-          {/* Nuevo Jugador */}
-          <Link href="/players?new=true">
-            <Button 
-              variant="outline"
-              className="w-full h-auto p-6 flex flex-col items-start gap-3 hover:bg-primary hover:text-primary-foreground transition-all hover:scale-105"
-            >
-              <div className="flex items-center gap-3 w-full">
-                <div className="p-3 rounded-lg bg-orange-100 dark:bg-orange-900">
-                  <UserPlus className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-                </div>
-                <div className="text-left flex-1">
-                  <h3 className="font-semibold text-lg">Nuevo Jugador</h3>
-                  <p className="text-sm text-muted-foreground">Registrarse</p>
                 </div>
               </div>
             </Button>
