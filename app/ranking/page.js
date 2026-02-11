@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trophy, Medal, Award } from 'lucide-react';
+import { Trophy, Medal, Award, User } from 'lucide-react';
 
 export default function RankingPage() {
   const [ranking, setRanking] = useState([]);
@@ -18,11 +19,9 @@ export default function RankingPage() {
 
   const fetchRanking = async () => {
     try {
-      // Primero obtener la semana actual
       const weekRes = await axios.get('/api/weeks/current');
       setWeekInfo(weekRes.data);
 
-      // Luego obtener el ranking de esa semana
       const rankingRes = await axios.get(`/api/weeks/ranking?weekId=${weekRes.data.id}`);
       setRanking(rankingRes.data.ranking);
     } catch (error) {
@@ -93,8 +92,8 @@ export default function RankingPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[80px]">Posición</TableHead>
-                  <TableHead>Jugador</TableHead>
-                  <TableHead>Personaje</TableHead>
+                  <TableHead className="w-[180px]">Jugador</TableHead>
+                  <TableHead className="w-[100px]">Personaje</TableHead>
                   <TableHead className="text-center">Partidas</TableHead>
                   <TableHead className="text-right">Puntos</TableHead>
                 </TableRow>
@@ -108,14 +107,45 @@ export default function RankingPage() {
                         <span>{index + 1}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-semibold">{player.playerName}</TableCell>
+
                     <TableCell>
-                      {player.character ? (
-                        <Badge variant="secondary">{player.character}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">Sin personaje</span>
-                      )}
+                      <div>
+                        <p className="font-semibold text-lg">{player.playerName}</p>
+                        {player.character ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="secondary" className="text-xs">
+                              {player.character}
+                            </Badge>
+                            {player.characterSeries && (
+                              <span className="text-xs text-muted-foreground">
+                                {player.characterSeries}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Sin personaje</span>
+                        )}
+                      </div>
                     </TableCell>
+                    
+                    <TableCell>
+                      <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-gradient-to-br from-muted to-background border-2">
+                        {player.characterImage ? (
+                          <Image
+                            src={player.characterImage}
+                            alt={player.character || 'Character'}
+                            fill
+                            className="object-contain p-1"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <User className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    
                     <TableCell className="text-center">{player.matchesPlayed}</TableCell>
                     <TableCell className="text-right font-bold text-lg">
                       {player.totalPoints}

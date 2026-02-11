@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Trophy, Users, Clock, Medal, Award, User } from 'lucide-react';
+import { Calendar, Trophy, Users, Clock, Medal, Award, User, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -16,6 +16,7 @@ export default function MatchesPage() {
   const [weeks, setWeeks] = useState([]);
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [expandedMatches, setExpandedMatches] = useState(new Set());
 
   useEffect(() => {
     fetchWeeks();
@@ -29,11 +30,8 @@ export default function MatchesPage() {
 
   const fetchWeeks = async () => {
     try {
-      // Obtener semana actual
       const currentWeekRes = await axios.get('/api/weeks/current');
       setSelectedWeek(currentWeekRes.data.id);
-      
-      // Obtener todas las semanas (podrías crear un endpoint para esto)
       setWeeks([currentWeekRes.data]);
     } catch (error) {
       console.error('Error fetching weeks:', error);
@@ -45,14 +43,11 @@ export default function MatchesPage() {
     try {
       const res = await axios.get(`/api/matches?weekId=${weekId}`);
       
-      // Enriquecer con personajes
       const enrichedMatches = await Promise.all(
         res.data.map(async (match) => {
-          // Obtener personajes de esa semana
           const weekRes = await axios.get('/api/weeks/current');
           const weeklyCharacters = weekRes.data.weeklyCharacters || [];
           
-          // Mapear resultados con personajes
           const resultsWithCharacters = match.results.map(result => {
             const playerChar = weeklyCharacters.find(
               wc => wc.playerId === result.playerId
@@ -76,6 +71,18 @@ export default function MatchesPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleMatch = (matchId) => {
+    setExpandedMatches(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(matchId)) {
+        newSet.delete(matchId);
+      } else {
+        newSet.add(matchId);
+      }
+      return newSet;
+    });
   };
 
   const getPositionIcon = (position) => {
@@ -169,97 +176,113 @@ export default function MatchesPage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {matches.map((match, matchIndex) => (
-            <Card key={match.id} className="overflow-hidden">
-              <CardHeader className="bg-muted/50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-lg font-bold text-primary">#{matches.length - matchIndex}</span>
+          {matches.map((match, matchIndex) => {
+            const isExpanded = expandedMatches.has(match.id);
+            
+            return (
+              <Card key={match.id} className="overflow-hidden">
+                <CardHeader 
+                  className="bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors"
+                  onClick={() => toggleMatch(match.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-lg font-bold text-primary">#{matches.length - matchIndex}</span>
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">
+                          Partida {matches.length - matchIndex}
+                        </CardTitle>
+                        <CardDescription className="flex items-center gap-2">
+                          <Calendar className="h-3 w-3" />
+                          {format(new Date(match.playedAt), "dd 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}
+                        </CardDescription>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className="text-lg">
-                        Partida {matches.length - matchIndex}
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-2">
-                        <Calendar className="h-3 w-3" />
-                        {format(new Date(match.playedAt), "dd 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}
-                      </CardDescription>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="text-sm">
+                        {match.results.length} jugadores
+                      </Badge>
+                      {isExpanded ? (
+                        <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      )}
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-sm">
-                    {match.results.length} jugadores
-                  </Badge>
-                </div>
-              </CardHeader>
+                </CardHeader>
 
-              <CardContent className="p-0">
-                <div className="divide-y">
-                  {match.results
-                    .sort((a, b) => a.position - b.position)
-                    .map((result) => (
-                      <div
-                        key={result.id}
-                        className={`flex items-center gap-4 p-4 transition-colors hover:bg-muted/50 ${getPositionColor(result.position)}`}
-                      >
-                        {/* Position */}
-                        <div className="flex items-center justify-center w-12">
-                          {getPositionIcon(result.position)}
-                        </div>
-
-                        {/* Character Image */}
-                        <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-muted border-2">
-                          {result.character?.image ? (
-                            <Image
-                              src={result.character.image}
-                              alt={result.character.name}
-                              fill
-                              className="object-contain p-1"
-                              unoptimized
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <User className="h-8 w-8 text-muted-foreground" />
+                {isExpanded && (
+                  <CardContent className="p-0">
+                    <div className="divide-y">
+                      {match.results
+                        .sort((a, b) => a.position - b.position)
+                        .map((result) => (
+                          <div
+                            key={result.id}
+                            className={`flex items-center gap-4 p-4 transition-colors hover:bg-muted/50 ${getPositionColor(result.position)}`}
+                          >
+                            {/* Position */}
+                            <div className="flex items-center justify-center w-12">
+                              {getPositionIcon(result.position)}
                             </div>
-                          )}
-                        </div>
 
-                        {/* Player Info */}
-                        <div className="flex-1">
-                          <p className="font-semibold text-lg">{result.player.name}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {result.character ? (
-                              <>
-                                <Badge variant="secondary" className="text-xs">
-                                  {result.character.name}
-                                </Badge>
-                                {result.character.series && (
+                            {/* Character Image */}
+                            <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-muted border-2">
+                              {result.character?.image ? (
+                                <Image
+                                  src={result.character.image}
+                                  alt={result.character.name}
+                                  fill
+                                  className="object-contain p-1"
+                                  unoptimized
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <User className="h-8 w-8 text-muted-foreground" />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Player Info */}
+                            <div className="flex-1">
+                              <p className="font-semibold text-lg">{result.player.name}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                {result.character ? (
+                                  <>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {result.character.name}
+                                    </Badge>
+                                    {result.character.series && (
+                                      <span className="text-xs text-muted-foreground">
+                                        {result.character.series}
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
                                   <span className="text-xs text-muted-foreground">
-                                    {result.character.series}
+                                    Sin personaje registrado
                                   </span>
                                 )}
-                              </>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                Sin personaje registrado
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                              </div>
+                            </div>
 
-                        {/* Points */}
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-primary">
-                            {result.points}
+                            {/* Points */}
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-primary">
+                                {result.points}
+                              </div>
+                              <div className="text-xs text-muted-foreground">puntos</div>
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">puntos</div>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                        ))}
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

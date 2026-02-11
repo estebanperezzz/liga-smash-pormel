@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// GET /api/weeks/ranking?weekId=X - Obtener ranking de una semana
+// GET /api/weeks/ranking?weekId=X - Obtener ranking de una semana específica
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const weekId = searchParams.get('weekId');
+    const weekId = parseInt(searchParams.get('weekId'));
 
     if (!weekId) {
       return NextResponse.json(
@@ -14,10 +14,10 @@ export async function GET(request) {
       );
     }
 
-    // Obtener todas las partidas de la semana con sus resultados
+    // Obtener todos los resultados de partidas de la semana
     const matches = await prisma.match.findMany({
       where: {
-        weekId: parseInt(weekId),
+        weekId,
       },
       include: {
         results: {
@@ -26,20 +26,27 @@ export async function GET(request) {
           },
         },
       },
-      orderBy: {
-        playedAt: 'asc',
+    });
+
+    // Obtener personajes seleccionados en esta semana
+    const weeklyCharacters = await prisma.weeklyCharacter.findMany({
+      where: {
+        weekId,
+      },
+      include: {
+        player: true,
+        character: true,
       },
     });
 
-    // Obtener personajes seleccionados
-    const weeklyCharacters = await prisma.weeklyCharacter.findMany({
-      where: {
-        weekId: parseInt(weekId),
-      },
-      include: {
-        character: true,
-        player: true,
-      },
+    // Crear mapa de personajes por jugador
+    const playerCharacters = {};
+    weeklyCharacters.forEach((wc) => {
+      playerCharacters[wc.playerId] = {
+        name: wc.character.name,
+        image: wc.character.image,
+        series: wc.character.series,
+      };
     });
 
     // Calcular puntos totales por jugador
@@ -47,36 +54,23 @@ export async function GET(request) {
 
     matches.forEach((match) => {
       match.results.forEach((result) => {
-        const playerId = result.playerId;
-        const playerName = result.player.name;
-
-        if (!playerStats[playerId]) {
-          playerStats[playerId] = {
-            playerId,
-            playerName,
+        if (!playerStats[result.playerId]) {
+          playerStats[result.playerId] = {
+            playerId: result.playerId,
+            playerName: result.player.name,
             totalPoints: 0,
             matchesPlayed: 0,
             positions: [],
-            character: null,
+            character: playerCharacters[result.playerId]?.name || null,
+            characterImage: playerCharacters[result.playerId]?.image || null,
+            characterSeries: playerCharacters[result.playerId]?.series || null,
           };
         }
 
-        playerStats[playerId].totalPoints += result.points;
-        playerStats[playerId].matchesPlayed += 1;
-        playerStats[playerId].positions.push({
-          matchId: match.id,
-          position: result.position,
-          points: result.points,
-          playedAt: match.playedAt,
-        });
+        playerStats[result.playerId].totalPoints += result.points;
+        playerStats[result.playerId].matchesPlayed += 1;
+        playerStats[result.playerId].positions.push(result.position);
       });
-    });
-
-    // Agregar información de personajes
-    weeklyCharacters.forEach((wc) => {
-      if (playerStats[wc.playerId]) {
-        playerStats[wc.playerId].character = wc.character.name;
-      }
     });
 
     // Convertir a array y ordenar por puntos
@@ -85,7 +79,7 @@ export async function GET(request) {
     );
 
     return NextResponse.json({
-      weekId: parseInt(weekId),
+      weekId,
       ranking,
       totalMatches: matches.length,
     });
