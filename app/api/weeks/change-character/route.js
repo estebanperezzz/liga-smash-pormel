@@ -1,7 +1,23 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// POST /api/weeks/change-character - Cambiar personaje (solo últimos 3, martes a viernes después 14:00)
+function isWithinChangeWindow() {
+  const now = new Date();
+  const day = now.getDay();
+  const hour = now.getHours();
+  const minutes = now.getMinutes();
+  const timeInMinutes = hour * 60 + minutes;
+
+  const tuesday14h = 14 * 60 + 0;
+  const friday18h = 18 * 60 + 0;
+
+  if (day === 2 && timeInMinutes >= tuesday14h) return true;
+  if (day === 3 || day === 4) return true;
+  if (day === 5 && timeInMinutes < friday18h) return true;
+
+  return false;
+}
+
 export async function POST(request) {
   try {
     const { playerId, weekId, newCharacterId } = await request.json();
@@ -13,19 +29,13 @@ export async function POST(request) {
       );
     }
 
-    // Verificar horario (martes a viernes después 14:00)
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const hour = now.getHours();
-
-    if (!(dayOfWeek >= 2 && dayOfWeek <= 5 && hour >= 14)) {
+    if (!isWithinChangeWindow()) {
       return NextResponse.json(
-        { error: 'Los cambios solo están disponibles de martes a viernes después de las 14:00' },
+        { error: 'Los cambios están disponibles entre el martes 14:00 y el viernes 18:00' },
         { status: 403 }
       );
     }
 
-    // Obtener ranking para verificar elegibilidad
     const matches = await prisma.match.findMany({
       where: { weekId },
       include: {
@@ -61,7 +71,6 @@ export async function POST(request) {
       );
     }
 
-    // Verificar que ya no haya cambiado antes
     const existingChange = await prisma.characterChange.findUnique({
       where: {
         playerId_weekId: {
@@ -78,7 +87,6 @@ export async function POST(request) {
       );
     }
 
-    // Obtener personaje actual
     const currentSelection = await prisma.weeklyCharacter.findUnique({
       where: {
         playerId_weekId: {
@@ -95,7 +103,6 @@ export async function POST(request) {
       );
     }
 
-    // Verificar que el nuevo personaje no esté tomado
     const characterTaken = await prisma.weeklyCharacter.findUnique({
       where: {
         characterId_weekId: {
@@ -112,9 +119,7 @@ export async function POST(request) {
       );
     }
 
-    // Realizar el cambio en una transacción
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Registrar el cambio en CharacterChange
       const change = await tx.characterChange.create({
         data: {
           playerId,
@@ -129,7 +134,6 @@ export async function POST(request) {
         },
       });
 
-      // 2. Actualizar WeeklyCharacter
       const updated = await tx.weeklyCharacter.update({
         where: {
           playerId_weekId: {

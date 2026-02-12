@@ -1,7 +1,26 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// GET /api/weeks/eligible-for-change?weekId=X - Obtener jugadores elegibles para cambiar personaje
+function isWithinChangeWindow() {
+  const now = new Date();
+  const day = now.getDay();  // 0=Dom, 1=Lun, 2=Mar, 3=Mie, 4=Jue, 5=Vie, 6=Sab
+  const hour = now.getHours();
+  const minutes = now.getMinutes();
+  const timeInMinutes = hour * 60 + minutes;
+
+  const tuesday14h = 2 * 60 + 0;   // Martes 14:00 en minutos del día
+  const friday18h = 18 * 60 + 0;   // Viernes 18:00 en minutos del día
+
+  // Martes después de las 14:00
+  if (day === 2 && timeInMinutes >= tuesday14h) return true;
+  // Miércoles y jueves todo el día
+  if (day === 3 || day === 4) return true;
+  // Viernes hasta las 18:00
+  if (day === 5 && timeInMinutes < friday18h) return true;
+
+  return false;
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -14,23 +33,14 @@ export async function GET(request) {
       );
     }
 
-    // Verificar que sea martes a viernes después de las 14:00
-    const now = new Date();
-    const dayOfWeek = now.getDay(); // 0 = Domingo, 2 = Martes, 3 = Miércoles, 4 = Jueves, 5 = Viernes
-    const hour = now.getHours();
-
-    // Permitir de martes (2) a viernes (5) después de las 14:00
-    const isEligibleTime = (dayOfWeek >= 2 && dayOfWeek <= 5) && hour >= 14;
-
-    if (!isEligibleTime) {
+    if (!isWithinChangeWindow()) {
       return NextResponse.json({
         eligible: false,
-        message: 'Los cambios solo están disponibles de martes a viernes después de las 14:00',
+        message: 'Los cambios están disponibles entre el martes 14:00 y el viernes 18:00',
         eligiblePlayers: [],
       });
     }
 
-    // Obtener ranking actual
     const matches = await prisma.match.findMany({
       where: { weekId },
       include: {
@@ -40,7 +50,6 @@ export async function GET(request) {
       },
     });
 
-    // Si no hay partidas aún, nadie es elegible
     if (matches.length === 0) {
       return NextResponse.json({
         eligible: false,
@@ -49,7 +58,6 @@ export async function GET(request) {
       });
     }
 
-    // Calcular puntos por jugador
     const playerStats = {};
     matches.forEach((match) => {
       match.results.forEach((result) => {
@@ -64,15 +72,12 @@ export async function GET(request) {
       });
     });
 
-    // Ordenar por puntos (menor a mayor)
     const ranking = Object.values(playerStats).sort(
       (a, b) => a.totalPoints - b.totalPoints
     );
 
-    // Obtener últimos 3
     const bottom3 = ranking.slice(0, 3);
 
-    // Verificar quiénes ya han cambiado
     const changes = await prisma.characterChange.findMany({
       where: {
         weekId,
@@ -82,7 +87,6 @@ export async function GET(request) {
 
     const alreadyChanged = new Set(changes.map(c => c.playerId));
 
-    // Filtrar solo los que no han cambiado
     const eligiblePlayers = bottom3
       .filter(p => !alreadyChanged.has(p.playerId))
       .map(p => ({
