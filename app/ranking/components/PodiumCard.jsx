@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Trophy, Medal, Award, User } from 'lucide-react';
+import { Trophy, Medal, Award, User, Gamepad2 } from 'lucide-react';
 
 const configs = {
   1: {
@@ -67,6 +67,14 @@ export default function PodiumCard({ player, position }) {
           <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold shadow-lg ${config.labelClass}`}>
             {config.icon}
             {config.label}
+          </div>
+        </div>
+
+        {/* Partidas - arriba derecha */}
+        <div className="absolute top-3 right-3">
+          <div className="flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full">
+            <Gamepad2 className="h-3 w-3 text-white/80" />
+            <span className="text-white/90 text-xs font-medium">{player.matchesPlayed}</span>
           </div>
         </div>
 

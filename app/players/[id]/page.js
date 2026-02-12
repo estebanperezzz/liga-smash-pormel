@@ -7,7 +7,24 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trophy, Medal, Award, Gamepad2, Target, TrendingUp, ArrowLeft, User } from 'lucide-react';
+import { Trophy, Medal, Award, Gamepad2, Target, TrendingUp, ArrowLeft, User, Star } from 'lucide-react';
+
+function getFavoriteCharacter(byCharacter) {
+  if (!byCharacter || byCharacter.length === 0) return null;
+
+  const maxMatches = Math.max(...byCharacter.map(c => c.matchesPlayed));
+  const maxTop1 = Math.max(...byCharacter.map(c => c.top1));
+
+  // Normalizar ambas métricas entre 0 y 1, promediarlas
+  return byCharacter
+    .map(c => ({
+      ...c,
+      score:
+        (maxMatches > 0 ? c.matchesPlayed / maxMatches : 0) * 0.5 +
+        (maxTop1 > 0 ? c.top1 / maxTop1 : 0) * 0.5,
+    }))
+    .sort((a, b) => b.score - a.score)[0];
+}
 
 export default function PlayerStatsPage() {
   const { id } = useParams();
@@ -43,6 +60,7 @@ export default function PlayerStatsPage() {
   }
 
   const { player, general, byCharacter } = data;
+  const favorite = getFavoriteCharacter(byCharacter);
 
   return (
     <div className="space-y-6">
@@ -113,6 +131,49 @@ export default function PlayerStatsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Personaje Favorito */}
+      {favorite && (
+        <Card className="border-2 border-primary/30 overflow-hidden">
+          <div className="flex items-center">
+            {/* Imagen grande del personaje */}
+            <div className="relative h-36 w-36 flex-shrink-0 bg-gradient-to-br from-muted to-background">
+              {favorite.characterImage ? (
+                <Image
+                  src={favorite.characterImage}
+                  alt={favorite.characterName}
+                  fill
+                  className="object-contain p-2"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <User className="h-16 w-16 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 p-6">
+              <div className="flex items-center gap-2 mb-1">
+                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Personaje Favorito</p>
+              </div>
+              <p className="text-2xl font-bold">{favorite.characterName}</p>
+              {favorite.characterSeries && (
+                <Badge variant="outline" className="mt-1 text-xs">{favorite.characterSeries}</Badge>
+              )}
+              <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+                <span>{favorite.matchesPlayed} partidas</span>
+                <span>·</span>
+                <span>{favorite.top1} victorias</span>
+                <span>·</span>
+                <span>{favorite.totalPoints} pts</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* By Character */}
       <Card>

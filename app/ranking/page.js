@@ -44,13 +44,6 @@ export default function RankingPage() {
     }
   };
 
-  const getRankIcon = (index) => {
-    if (index === 0) return <Trophy className="h-5 w-5 text-yellow-500" />;
-    if (index === 1) return <Medal className="h-5 w-5 text-gray-400" />;
-    if (index === 2) return <Award className="h-5 w-5 text-orange-600" />;
-    return null;
-  };
-
   const isEligibleForChange = (playerId) => eligiblePlayers.includes(playerId);
 
   if (loading) {
@@ -125,7 +118,7 @@ export default function RankingPage() {
                   {ranking.slice(3).map((player, index) => (
                   <TableRow
                     key={player.playerId}
-                    className={`cursor-pointer hover:bg-muted/80 transition-colors ${index < 3 ? 'bg-muted/50' : ''}`}
+                    className={`cursor-pointer hover:bg-muted/80 transition-colors`}
                     onClick={() => router.push(`/players/${player.playerId}`)}
                   >
                     <TableCell className="font-medium">
