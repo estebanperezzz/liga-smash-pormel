@@ -1,14 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Trophy, Medal, Award, User, RefreshCw } from 'lucide-react';
+import PodiumCard from './components/PodiumCard';
 
 export default function RankingPage() {
+  const router = useRouter();
   const [ranking, setRanking] = useState([]);
   const [loading, setLoading] = useState(true);
   const [weekInfo, setWeekInfo] = useState(null);
@@ -26,7 +29,6 @@ export default function RankingPage() {
       const rankingRes = await axios.get(`/api/weeks/ranking?weekId=${weekRes.data.id}`);
       setRanking(rankingRes.data.ranking);
 
-      // Obtener elegibilidad para cambio
       try {
         const eligibleRes = await axios.get(`/api/weeks/eligible-for-change?weekId=${weekRes.data.id}`);
         if (eligibleRes.data.eligible && eligibleRes.data.eligiblePlayers) {
@@ -49,9 +51,7 @@ export default function RankingPage() {
     return null;
   };
 
-  const isEligibleForChange = (playerId) => {
-    return eligiblePlayers.includes(playerId);
-  };
+  const isEligibleForChange = (playerId) => eligiblePlayers.includes(playerId);
 
   if (loading) {
     return (
@@ -73,7 +73,6 @@ export default function RankingPage() {
         </p>
       </div>
 
-      {/* Week Info */}
       {weekInfo && (
         <Card>
           <CardHeader>
@@ -85,12 +84,21 @@ export default function RankingPage() {
         </Card>
       )}
 
+      {/* Top 3 Podium */}
+      {ranking.length >= 3 && (
+        <div className="flex items-end gap-3">
+          <PodiumCard player={ranking[1]} position={2} />
+          <PodiumCard player={ranking[0]} position={1} />
+          <PodiumCard player={ranking[2]} position={3} />
+        </div>
+      )}
+
       {/* Ranking Table */}
       <Card>
         <CardHeader>
           <CardTitle>Tabla de Posiciones</CardTitle>
           <CardDescription>
-            {ranking.length} {ranking.length === 1 ? 'jugador' : 'jugadores'} en competencia
+            {ranking.length > 3 ? `Posiciones 4° en adelante` : 'Sin más jugadores'} · Click en un jugador para ver sus stats
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -114,12 +122,15 @@ export default function RankingPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ranking.map((player, index) => (
-                  <TableRow key={player.playerId} className={index < 3 ? 'bg-muted/50' : ''}>
+                  {ranking.slice(3).map((player, index) => (
+                  <TableRow
+                    key={player.playerId}
+                    className={`cursor-pointer hover:bg-muted/80 transition-colors ${index < 3 ? 'bg-muted/50' : ''}`}
+                    onClick={() => router.push(`/players/${player.playerId}`)}
+                  >
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        {getRankIcon(index)}
-                        <span>{index + 1}</span>
+                        <span>{index + 4}</span>
                       </div>
                     </TableCell>
 
@@ -150,7 +161,7 @@ export default function RankingPage() {
                         )}
                       </div>
                     </TableCell>
-                    
+
                     <TableCell className="pl-2">
                       <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-gradient-to-br from-muted to-background border-2">
                         {player.characterImage ? (
@@ -168,7 +179,7 @@ export default function RankingPage() {
                         )}
                       </div>
                     </TableCell>
-                    
+
                     <TableCell className="text-center">{player.matchesPlayed}</TableCell>
                     <TableCell className="text-right font-bold text-lg">
                       {player.totalPoints}
@@ -180,86 +191,6 @@ export default function RankingPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Top 3 Podium */}
-      {ranking.length >= 3 && (
-        <div className="grid grid-cols-3 gap-4">
-          {/* 2nd Place */}
-          <Card className="mt-8 overflow-hidden relative">
-            {ranking[1]?.characterImage && (
-              <div className="absolute inset-0 opacity-20">
-                <Image
-                  src={ranking[1].characterImage}
-                  alt=""
-                  fill
-                  className="object-cover blur-sm scale-110"
-                  unoptimized
-                />
-              </div>
-            )}
-            <div className="relative z-10">
-              <CardHeader className="text-center pb-2">
-                <Medal className="h-8 w-8 text-gray-400 mx-auto" />
-                <CardTitle className="text-lg">2° Lugar</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="font-bold">{ranking[1]?.playerName}</p>
-                <p className="text-2xl font-bold text-primary">{ranking[1]?.totalPoints} pts</p>
-              </CardContent>
-            </div>
-          </Card>
-
-          {/* 1st Place */}
-          <Card className="border-yellow-500 border-2 overflow-hidden relative">
-            {ranking[0]?.characterImage && (
-              <div className="absolute inset-0 opacity-20">
-                <Image
-                  src={ranking[0].characterImage}
-                  alt=""
-                  fill
-                  className="object-cover blur-sm scale-110"
-                  unoptimized
-                />
-              </div>
-            )}
-            <div className="relative z-10">
-              <CardHeader className="text-center pb-2">
-                <Trophy className="h-10 w-10 text-yellow-500 mx-auto" />
-                <CardTitle>1° Lugar</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="font-bold text-lg">{ranking[0]?.playerName}</p>
-                <p className="text-3xl font-bold text-primary">{ranking[0]?.totalPoints} pts</p>
-              </CardContent>
-            </div>
-          </Card>
-
-          {/* 3rd Place */}
-          <Card className="mt-8 overflow-hidden relative">
-            {ranking[2]?.characterImage && (
-              <div className="absolute inset-0 opacity-20">
-                <Image
-                  src={ranking[2].characterImage}
-                  alt=""
-                  fill
-                  className="object-cover blur-sm scale-110"
-                  unoptimized
-                />
-              </div>
-            )}
-            <div className="relative z-10">
-              <CardHeader className="text-center pb-2">
-                <Award className="h-8 w-8 text-orange-600 mx-auto" />
-                <CardTitle className="text-lg">3° Lugar</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="font-bold">{ranking[2]?.playerName}</p>
-                <p className="text-2xl font-bold text-primary">{ranking[2]?.totalPoints} pts</p>
-              </CardContent>
-            </div>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

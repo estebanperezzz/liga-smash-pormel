@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,9 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, Users } from 'lucide-react';
+import { UserPlus, Users, ChevronRight } from 'lucide-react';
 
 export default function PlayersPage() {
+  const router = useRouter();
   const [players, setPlayers] = useState([]);
   const [newPlayerName, setNewPlayerName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -33,24 +35,13 @@ export default function PlayersPage() {
 
   const handleAddPlayer = async (e) => {
     e.preventDefault();
-
-    if (!newPlayerName.trim()) {
-      alert('Por favor ingresa un nombre');
-      return;
-    }
-
+    if (!newPlayerName.trim()) return;
     setSubmitting(true);
-
     try {
-      await axios.post('/api/players', {
-        name: newPlayerName.trim()
-      });
-
-      alert('¡Jugador agregado exitosamente!');
+      await axios.post('/api/players', { name: newPlayerName.trim() });
       setNewPlayerName('');
       fetchPlayers();
     } catch (error) {
-      console.error('Error adding player:', error);
       alert(error.response?.data?.error || 'Error al agregar jugador');
     } finally {
       setSubmitting(false);
@@ -72,9 +63,7 @@ export default function PlayersPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Jugadores</h1>
-        <p className="text-muted-foreground">
-          Gestiona los jugadores de la liga
-        </p>
+        <p className="text-muted-foreground">Gestiona los jugadores de la liga</p>
       </div>
 
       {/* Add Player Form */}
@@ -84,16 +73,11 @@ export default function PlayersPage() {
             <UserPlus className="h-5 w-5" />
             Agregar Nuevo Jugador
           </CardTitle>
-          <CardDescription>
-            Registra un nuevo competidor en la liga
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAddPlayer} className="flex gap-3">
             <div className="flex-1">
-              <Label htmlFor="playerName" className="sr-only">
-                Nombre del jugador
-              </Label>
+              <Label htmlFor="playerName" className="sr-only">Nombre del jugador</Label>
               <Input
                 id="playerName"
                 placeholder="Nombre del jugador"
@@ -118,7 +102,7 @@ export default function PlayersPage() {
             Lista de Jugadores
           </CardTitle>
           <CardDescription>
-            {players.length} {players.length === 1 ? 'jugador registrado' : 'jugadores registrados'}
+            {players.length} {players.length === 1 ? 'jugador registrado' : 'jugadores registrados'} · Click en un jugador para ver sus stats
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -126,30 +110,34 @@ export default function PlayersPage() {
             <div className="text-center py-12">
               <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-lg font-medium">No hay jugadores registrados</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Agrega el primer jugador usando el formulario de arriba
-              </p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px]">ID</TableHead>
+                  <TableHead className="w-[80px]">ID</TableHead>
                   <TableHead>Nombre</TableHead>
-                  <TableHead>Fecha de Registro</TableHead>
+                  <TableHead>Desde</TableHead>
                   <TableHead className="text-right">Estado</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {players.map((player) => (
-                  <TableRow key={player.id}>
-                    <TableCell className="font-medium">#{player.id}</TableCell>
+                  <TableRow
+                    key={player.id}
+                    className="cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => router.push(`/players/${player.id}`)}
+                  >
+                    <TableCell className="font-medium text-muted-foreground">#{player.id}</TableCell>
                     <TableCell className="font-semibold">{player.name}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {new Date(player.createdAt).toLocaleDateString('es-AR')}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Badge variant="secondary">Activo</Badge>
+                      <div className="flex items-center justify-end gap-2">
+                        <Badge variant="secondary">Activo</Badge>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
