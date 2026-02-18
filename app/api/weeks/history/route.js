@@ -4,26 +4,82 @@ import prisma from '@/lib/prisma';
 // GET /api/weeks/history - Obtener historial de campeones
 export async function GET() {
   try {
-    // Obtener todas las semanas con ganador
-    const weeks = await prisma.week.findMany({
+    const now = new Date();
+
+    // Obtener todas las semanas completadas
+    const completedWeeks = await prisma.week.findMany({
       where: {
-        winnerId: {
-          not: null,
-        },
+        endDate: { lt: now },
       },
       include: {
         winner: true,
+        weeklyCharacters: {
+          include: { character: true },
+        },
+        matches: {
+          include: {
+            results: {
+              include: { player: true },
+            },
+          },
+        },
       },
-      orderBy: {
-        endDate: 'desc',
-      },
+      orderBy: { endDate: 'desc' },
     });
+
+    // Determinar campeón para cada semana
+    const weeksWithChampions = completedWeeks
+      .map((week) => {
+        let winner = week.winner;
+
+        // Calcular siempre los puntos desde partidas (para stats y desempate)
+        const playerPoints = {};
+        week.matches.forEach((match) => {
+          match.results.forEach((result) => {
+            if (!playerPoints[result.playerId]) {
+              playerPoints[result.playerId] = {
+                player: result.player,
+                totalPoints: 0,
+                matchesPlayed: 0,
+              };
+            }
+            playerPoints[result.playerId].totalPoints += result.points;
+            playerPoints[result.playerId].matchesPlayed += 1;
+          });
+        });
+
+        if (!winner && week.matches.length > 0) {
+          const rankings = Object.values(playerPoints).sort(
+            (a, b) => b.totalPoints - a.totalPoints
+          );
+          winner = rankings[0]?.player || null;
+        }
+
+        if (!winner) return null;
+
+        const winnerStats = playerPoints[winner.id];
+        const winnerCharacter =
+          week.weeklyCharacters.find((wc) => wc.playerId === winner.id)
+            ?.character || null;
+
+        return {
+          id: week.id,
+          weekNumber: week.weekNumber,
+          startDate: week.startDate,
+          endDate: week.endDate,
+          winner,
+          winnerCharacter,
+          winnerPoints: winnerStats?.totalPoints ?? null,
+          winnerMatchesPlayed: winnerStats?.matchesPlayed ?? null,
+        };
+      })
+      .filter(Boolean);
 
     // Calcular estadísticas de campeones
     const championStats = {};
 
-    weeks.forEach((week) => {
-      const playerId = week.winnerId;
+    weeksWithChampions.forEach((week) => {
+      const playerId = week.winner.id;
       const playerName = week.winner.name;
 
       if (!championStats[playerId]) {
@@ -49,9 +105,9 @@ export async function GET() {
     );
 
     return NextResponse.json({
-      weeks,
+      weeks: weeksWithChampions,
       championRanking,
-      totalWeeks: weeks.length,
+      totalWeeks: weeksWithChampions.length,
     });
   } catch (error) {
     console.error('Error fetching history:', error);
