@@ -5,7 +5,7 @@ import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trophy, Crown, Calendar, Star } from 'lucide-react';
+import { Trophy, Crown, Calendar, Star, Swords } from 'lucide-react';
 import WeekChampionCard from './components/WeekChampionCard';
 
 export default function HistoryPage() {
@@ -177,6 +177,76 @@ export default function HistoryPage() {
             <p className="text-sm text-muted-foreground mt-2">
               El historial se mostrará una vez que finalice la primera semana
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Historical Points Ranking */}
+      {history?.historicalPointsRanking && history.historicalPointsRanking.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Swords className="h-5 w-5 text-blue-500" />
+              Ranking Histórico de Puntos
+            </CardTitle>
+            <CardDescription>
+              Suma total de puntos acumulados en todas las semanas
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[80px]">Posición</TableHead>
+                  <TableHead>Jugador</TableHead>
+                  <TableHead className="text-center">Partidas</TableHead>
+                  <TableHead className="text-right">Puntos totales</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {history.historicalPointsRanking.map((player, index) => {
+                  const rowStyles = [
+                    'bg-gradient-to-r from-yellow-500/15 to-transparent border-l-2 border-yellow-500',
+                    'bg-gradient-to-r from-gray-400/15 to-transparent border-l-2 border-gray-400',
+                    'bg-gradient-to-r from-orange-600/15 to-transparent border-l-2 border-orange-600',
+                  ];
+                  return (
+                    <TableRow
+                      key={player.playerId}
+                      className={index < 3 ? rowStyles[index] : ''}
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {index === 0 && <Trophy className="h-4 w-4 text-yellow-500" />}
+                          {index === 1 && <Crown className="h-4 w-4 text-gray-400" />}
+                          {index === 2 && <Crown className="h-4 w-4 text-orange-600" />}
+                          <span className="font-bold">#{index + 1}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`font-semibold ${index === 0 ? 'text-yellow-600 dark:text-yellow-400' : ''}`}>
+                          {player.playerName}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className="text-xs">
+                          {player.matchesPlayed} partidas
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge
+                          variant={index === 0 ? 'default' : 'secondary'}
+                          className={`text-base px-3 py-1 ${index === 0 ? 'bg-yellow-500 hover:bg-yellow-500 text-yellow-950' : ''}`}
+                        >
+                          <Star className="h-3 w-3 mr-1" />
+                          {player.totalPoints} pts
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}

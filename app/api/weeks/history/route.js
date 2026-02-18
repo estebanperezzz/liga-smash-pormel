@@ -75,6 +75,29 @@ export async function GET() {
       })
       .filter(Boolean);
 
+    // Calcular ranking histórico de puntos (todos los jugadores, todas las semanas)
+    const historicalPoints = {};
+    completedWeeks.forEach((week) => {
+      week.matches.forEach((match) => {
+        match.results.forEach((result) => {
+          if (!historicalPoints[result.playerId]) {
+            historicalPoints[result.playerId] = {
+              playerId: result.playerId,
+              playerName: result.player.name,
+              totalPoints: 0,
+              matchesPlayed: 0,
+            };
+          }
+          historicalPoints[result.playerId].totalPoints += result.points;
+          historicalPoints[result.playerId].matchesPlayed += 1;
+        });
+      });
+    });
+
+    const historicalPointsRanking = Object.values(historicalPoints).sort(
+      (a, b) => b.totalPoints - a.totalPoints
+    );
+
     // Calcular estadísticas de campeones
     const championStats = {};
 
@@ -107,6 +130,7 @@ export async function GET() {
     return NextResponse.json({
       weeks: weeksWithChampions,
       championRanking,
+      historicalPointsRanking,
       totalWeeks: weeksWithChampions.length,
     });
   } catch (error) {
