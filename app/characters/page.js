@@ -4,11 +4,10 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Check, X, Swords, User, AlertCircle, RefreshCw } from 'lucide-react';
+import { Search, Check, X, User, AlertCircle, RefreshCw, Clock } from 'lucide-react';
 
 export default function CharactersPage() {
   const [characters, setCharacters] = useState([]);
@@ -28,8 +27,22 @@ export default function CharactersPage() {
   useEffect(() => {
     if (selectedPlayer && weekInfo) {
       checkEligibility();
+      fetchCharacters(weekInfo.id, selectedPlayer);
+    } else if (!selectedPlayer && weekInfo) {
+      fetchCharacters(weekInfo.id, null);
     }
   }, [selectedPlayer, weekInfo]);
+
+  const fetchCharacters = async (weekId, playerId = null) => {
+    try {
+      const params = new URLSearchParams({ weekId });
+      if (playerId) params.set('playerId', String(playerId));
+      const res = await axios.get(`/api/characters?${params}`);
+      setCharacters(res.data);
+    } catch (error) {
+      console.error('Error fetching characters:', error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -54,7 +67,7 @@ export default function CharactersPage() {
     try {
       const res = await axios.get(`/api/weeks/eligible-for-change?weekId=${weekInfo.id}`);
       setEligibilityInfo(res.data);
-      
+
       const isEligible = res.data.eligiblePlayers?.some(
         p => p.playerId === selectedPlayer
       );
@@ -72,6 +85,9 @@ export default function CharactersPage() {
     }
 
     const character = characters.find(c => c.id === characterId);
+
+    if (character.usedPreviousWeek) return;
+
     if (!character.available) {
       alert(`Este personaje ya fue seleccionado por ${character.selectedBy}`);
       return;
@@ -86,7 +102,6 @@ export default function CharactersPage() {
     let payload = {};
 
     if (mySelection && canChange) {
-      // Cambio de personaje
       confirmMessage = `¿Confirmar CAMBIO de ${mySelection.character.name} a ${character.name}?\n\nEsta es tu única oportunidad de cambio esta semana.`;
       endpoint = '/api/weeks/change-character';
       payload = {
@@ -95,7 +110,6 @@ export default function CharactersPage() {
         newCharacterId: characterId
       };
     } else if (!mySelection) {
-      // Selección inicial
       confirmMessage = `¿Confirmar selección de ${character.name} para ${players.find(p => p.id === selectedPlayer)?.name}?`;
       endpoint = '/api/weeks/select-character';
       payload = {
@@ -165,7 +179,7 @@ export default function CharactersPage() {
         <CardContent>
           <Select
             value={selectedPlayer?.toString() || ''}
-            onValueChange={(value) => setSelectedPlayer(parseInt(value))}
+            onValueChange={(value) => setSelectedPlayer(Number.parseInt(value))}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Seleccionar jugador" />
@@ -249,82 +263,110 @@ export default function CharactersPage() {
         {filteredCharacters.map((character) => {
           const isMyCharacter = mySelection?.characterId === character.id;
           const canSelect = character.available || isMyCharacter;
-          
+          const isRestricted = character.usedPreviousWeek && !isMyCharacter;
+
           return (
-            <button
-              key={character.id}
-              onClick={() => handleSelectCharacter(character.id)}
-              disabled={(!canSelect && !canChange) || submitting || (mySelection && !canChange && !isMyCharacter)}
-              className={`
-                relative rounded-lg border-2 transition-all overflow-hidden
-                ${canSelect
-                  ? 'border-border hover:border-primary hover:shadow-lg cursor-pointer bg-card hover:scale-105' 
-                  : 'border-muted bg-muted/30 cursor-not-allowed opacity-60'
-                }
-                ${isMyCharacter
-                  ? 'border-green-500 bg-green-50 dark:bg-green-950 ring-2 ring-green-500'
-                  : ''
-                }
-              `}
-            >
-              {/* Image Container */}
-              <div className="aspect-square relative bg-gradient-to-br from-muted to-background">
-                {character.image ? (
-                  <Image
-                    src={character.image}
-                    alt={character.name}
-                    fill
-                    className="object-contain p-2"
-                    unoptimized
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <User className="h-12 w-12 text-muted-foreground" />
-                  </div>
-                )}
-                
-                {/* Overlay for unavailable */}
-                {!canSelect && (
-                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-                    <X className="h-8 w-8 text-destructive" />
-                  </div>
-                )}
-
-                {/* Selected indicator */}
-                {isMyCharacter && (
-                  <div className="absolute top-2 right-2">
-                    <div className="bg-green-500 rounded-full p-1">
-                      <Check className="h-4 w-4 text-white" />
+            <div key={character.id} className="relative group/card">
+              <button
+                onClick={() => handleSelectCharacter(character.id)}
+                disabled={isRestricted || (!canSelect && !canChange) || submitting || (mySelection && !canChange && !isMyCharacter)}
+                className={`
+                  w-full relative rounded-lg border-2 transition-all overflow-hidden
+                  ${isRestricted
+                    ? 'border-amber-400/60 bg-amber-50/50 dark:bg-amber-950/20 cursor-not-allowed opacity-70'
+                    : canSelect
+                      ? 'border-border hover:border-primary hover:shadow-lg cursor-pointer bg-card hover:scale-105'
+                      : 'border-muted bg-muted/30 cursor-not-allowed opacity-60'
+                  }
+                  ${isMyCharacter
+                    ? 'border-green-500 bg-green-50 dark:bg-green-950 ring-2 ring-green-500'
+                    : ''
+                  }
+                `}
+              >
+                {/* Image Container */}
+                <div className="aspect-square relative bg-gradient-to-br from-muted to-background">
+                  {character.image ? (
+                    <Image
+                      src={character.image}
+                      alt={character.name}
+                      fill
+                      className="object-contain p-2"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <User className="h-12 w-12 text-muted-foreground" />
                     </div>
+                  )}
+
+                  {/* Overlay: tomado por otro jugador esta semana */}
+                  {!canSelect && !isRestricted && (
+                    <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                      <X className="h-8 w-8 text-destructive" />
+                    </div>
+                  )}
+
+                  {/* Overlay: usado la semana anterior */}
+                  {isRestricted && (
+                    <div className="absolute inset-0 bg-amber-950/35 flex items-center justify-center">
+                      <div className="bg-amber-500/90 rounded-full p-2 shadow-lg">
+                        <Clock className="h-5 w-5 text-white" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Indicator: personaje propio seleccionado */}
+                  {isMyCharacter && (
+                    <div className="absolute top-2 right-2">
+                      <div className="bg-green-500 rounded-full p-1">
+                        <Check className="h-4 w-4 text-white" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Name */}
+                <div className="p-3 border-t">
+                  <p className={`text-sm font-medium text-center line-clamp-2 ${
+                    canSelect && !isRestricted ? 'text-foreground' : 'text-muted-foreground'
+                  }`}>
+                    {character.name}
+                  </p>
+
+                  {/* Series */}
+                  {character.series && canSelect && !isRestricted && (
+                    <p className="text-xs text-muted-foreground text-center mt-1 truncate">
+                      {character.series}
+                    </p>
+                  )}
+
+                  {/* Etiqueta semana anterior */}
+                  {isRestricted && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 text-center mt-1 font-medium truncate">
+                      Semana anterior
+                    </p>
+                  )}
+                </div>
+
+                {/* Badge: tomado por otro jugador */}
+                {!canSelect && !isMyCharacter && !isRestricted && (
+                  <div className="absolute top-2 left-2">
+                    <Badge variant="destructive" className="text-xs">
+                      {character.selectedBy}
+                    </Badge>
                   </div>
                 )}
-              </div>
+              </button>
 
-              {/* Name */}
-              <div className="p-3 border-t">
-                <p className={`text-sm font-medium text-center line-clamp-2 ${
-                  canSelect ? 'text-foreground' : 'text-muted-foreground'
-                }`}>
-                  {character.name}
-                </p>
-                
-                {/* Series badge */}
-                {character.series && canSelect && (
-                  <p className="text-xs text-muted-foreground text-center mt-1 truncate">
-                    {character.series}
-                  </p>
-                )}
-              </div>
-
-              {/* Taken badge */}
-              {!canSelect && !isMyCharacter && (
-                <div className="absolute top-2 left-2">
-                  <Badge variant="destructive" className="text-xs">
-                    {character.selectedBy}
-                  </Badge>
+              {/* Tooltip semana anterior */}
+              {isRestricted && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover/card:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150 shadow-xl">
+                  Personaje ya utilizado la semana anterior
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-gray-900" />
                 </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
