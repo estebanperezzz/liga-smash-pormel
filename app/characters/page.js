@@ -1,13 +1,94 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Check, X, User, AlertCircle, RefreshCw, Clock } from 'lucide-react';
+
+function PlayerSearchInput({ players, selectedPlayerId, onSelect }) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef(null);
+
+  const selectedPlayer = players.find(p => p.id === selectedPlayerId);
+
+  const filtered = players.filter(p =>
+    p.name.toLowerCase().includes(query.toLowerCase())
+  );
+
+  const displayValue = selectedPlayer ? selectedPlayer.name : query;
+
+  const handleChange = (e) => {
+    setQuery(e.target.value);
+    if (selectedPlayerId) onSelect(null);
+    setOpen(true);
+  };
+
+  const handleSelect = (player) => {
+    onSelect(player.id);
+    setQuery('');
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    onSelect(null);
+    setQuery('');
+    setOpen(true);
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <input
+          ref={inputRef}
+          value={displayValue}
+          onChange={handleChange}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Buscar jugador..."
+          className="w-full h-10 pl-9 pr-8 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        />
+        {selectedPlayer && (
+          <button
+            onMouseDown={handleClear}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            tabIndex={-1}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {open && filtered.length > 0 && (
+        <ul className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+          {filtered.map(player => (
+            <li key={player.id}>
+              <button
+                onMouseDown={() => handleSelect(player)}
+                className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
+                  player.id === selectedPlayerId ? 'bg-accent font-semibold' : ''
+                }`}
+              >
+                {player.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {open && filtered.length === 0 && query.length > 0 && (
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg px-3 py-2 text-sm text-muted-foreground text-center">
+          No se encontró &quot;{query}&quot;
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CharactersPage() {
   const [characters, setCharacters] = useState([]);
@@ -25,11 +106,13 @@ export default function CharactersPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedPlayer && weekInfo) {
-      checkEligibility();
-      fetchCharacters(weekInfo.id, selectedPlayer);
-    } else if (!selectedPlayer && weekInfo) {
-      fetchCharacters(weekInfo.id, null);
+    if (weekInfo) {
+      if (selectedPlayer) {
+        checkEligibility();
+        fetchCharacters(weekInfo.id, selectedPlayer);
+      } else {
+        fetchCharacters(weekInfo.id, null);
+      }
     }
   }, [selectedPlayer, weekInfo]);
 
@@ -177,21 +260,11 @@ export default function CharactersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Select
-            value={selectedPlayer?.toString() || ''}
-            onValueChange={(value) => setSelectedPlayer(Number.parseInt(value))}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar jugador" />
-            </SelectTrigger>
-            <SelectContent>
-              {players.map((player) => (
-                <SelectItem key={player.id} value={player.id.toString()}>
-                  {player.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <PlayerSearchInput
+            players={players}
+            selectedPlayerId={selectedPlayer}
+            onSelect={setSelectedPlayer}
+          />
 
           {/* Current Selection */}
           {mySelection && (
@@ -265,24 +338,22 @@ export default function CharactersPage() {
           const canSelect = character.available || isMyCharacter;
           const isRestricted = character.usedPreviousWeek && !isMyCharacter;
 
+          const stateBorderClass = isRestricted
+            ? 'border-amber-400/60 bg-amber-50/50 dark:bg-amber-950/20 cursor-not-allowed opacity-70'
+            : canSelect
+              ? 'border-border hover:border-primary hover:shadow-lg cursor-pointer bg-card hover:scale-105'
+              : 'border-muted bg-muted/30 cursor-not-allowed opacity-60';
+
+          const myCharacterClass = isMyCharacter
+            ? 'border-green-500 bg-green-50 dark:bg-green-950 ring-2 ring-green-500'
+            : '';
+
           return (
             <div key={character.id} className="relative group/card">
               <button
                 onClick={() => handleSelectCharacter(character.id)}
                 disabled={isRestricted || (!canSelect && !canChange) || submitting || (mySelection && !canChange && !isMyCharacter)}
-                className={`
-                  w-full relative rounded-lg border-2 transition-all overflow-hidden
-                  ${isRestricted
-                    ? 'border-amber-400/60 bg-amber-50/50 dark:bg-amber-950/20 cursor-not-allowed opacity-70'
-                    : canSelect
-                      ? 'border-border hover:border-primary hover:shadow-lg cursor-pointer bg-card hover:scale-105'
-                      : 'border-muted bg-muted/30 cursor-not-allowed opacity-60'
-                  }
-                  ${isMyCharacter
-                    ? 'border-green-500 bg-green-50 dark:bg-green-950 ring-2 ring-green-500'
-                    : ''
-                  }
-                `}
+                className={`w-full relative rounded-lg border-2 transition-all overflow-hidden ${stateBorderClass} ${myCharacterClass}`}
               >
                 {/* Image Container */}
                 <div className="aspect-square relative bg-gradient-to-br from-muted to-background">

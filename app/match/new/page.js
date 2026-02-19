@@ -1,14 +1,98 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Gamepad2, Plus, Trash2, Save, Users } from 'lucide-react';
+import { Gamepad2, Plus, Trash2, Save, Users, Search, X } from 'lucide-react';
+
+// Combobox con búsqueda en tiempo real para seleccionar jugador
+function PlayerSearchInput({ availablePlayers, allPlayers, selectedPlayerId, onSelect }) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef(null);
+
+  const selectedPlayer = allPlayers.find(p => p.id === selectedPlayerId);
+
+  const filtered = availablePlayers.filter(p =>
+    p.name.toLowerCase().includes(query.toLowerCase())
+  );
+
+  const displayValue = selectedPlayer ? selectedPlayer.name : query;
+
+  const handleChange = (e) => {
+    setQuery(e.target.value);
+    if (selectedPlayerId) onSelect(null);
+    setOpen(true);
+  };
+
+  const handleSelect = (player) => {
+    onSelect(player.id);
+    setQuery('');
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    onSelect(null);
+    setQuery('');
+    setOpen(true);
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div className="relative flex-1">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <input
+          ref={inputRef}
+          value={displayValue}
+          onChange={handleChange}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Buscar jugador..."
+          className="w-full h-10 pl-9 pr-8 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        {selectedPlayer && (
+          <button
+            onMouseDown={handleClear}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            tabIndex={-1}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Dropdown */}
+      {open && filtered.length > 0 && (
+        <ul className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+          {filtered.map(player => (
+            <li key={player.id}>
+              <button
+                onMouseDown={() => handleSelect(player)}
+                className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
+                  player.id === selectedPlayerId ? 'bg-accent font-semibold' : ''
+                }`}
+              >
+                {player.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Sin resultados */}
+      {open && filtered.length === 0 && query.length > 0 && (
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg px-3 py-2 text-sm text-muted-foreground text-center">
+          No se encontró &quot;{query}&quot;
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function NewMatchPage() {
   const router = useRouter();
@@ -39,7 +123,7 @@ export default function NewMatchPage() {
   };
 
   const handleBulkAdd = () => {
-    const count = parseInt(bulkCount);
+    const count = Number.parseInt(bulkCount);
     if (!count || count < 1 || count > players.length) {
       alert(`Ingresa un número entre 1 y ${players.length}`);
       return;
@@ -65,7 +149,7 @@ export default function NewMatchPage() {
 
   const updatePlayer = (index, playerId) => {
     const newPlayers = [...selectedPlayers];
-    newPlayers[index].playerId = parseInt(playerId);
+    newPlayers[index].playerId = playerId; // number | null, ya tipado desde PlayerSearchInput
     setSelectedPlayers(newPlayers);
   };
 
@@ -164,8 +248,8 @@ export default function NewMatchPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>1. Ingresa la cantidad de jugadores para cargar los slots de una sola vez</p>
-          <p>2. Selecciona los jugadores en orden de posición (1° primero, último al final)</p>
-          <p>3. Puedes reorganizar usando las flechas arriba/abajo</p>
+          <p>2. Escribí el nombre del jugador en cada slot para buscarlo y seleccionarlo</p>
+          <p>3. Podés reorganizar usando las flechas arriba/abajo</p>
           <p>4. Los puntos se calcularán automáticamente según la cantidad de jugadores</p>
         </CardContent>
       </Card>
@@ -210,9 +294,10 @@ export default function NewMatchPage() {
               {selectedPlayers.length} {selectedPlayers.length === 1 ? 'jugador' : 'jugadores'} · Ordénalos de 1° a último
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             {selectedPlayers.map((player, index) => (
               <div key={index} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                {/* Flechas */}
                 <div className="flex flex-col gap-1">
                   <Button
                     size="icon"
@@ -234,32 +319,27 @@ export default function NewMatchPage() {
                   </Button>
                 </div>
 
-                <Badge variant="outline" className="text-lg px-3 py-1 w-12 justify-center">
+                {/* Posición */}
+                <Badge variant="outline" className="text-lg px-3 py-1 w-12 justify-center shrink-0">
                   {getPositionIcon(player.position)}
                 </Badge>
 
-                <Select
-                  value={player.playerId?.toString() || ''}
-                  onValueChange={(value) => updatePlayer(index, value)}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Seleccionar jugador" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailablePlayers(index).map((p) => (
-                      <SelectItem key={p.id} value={p.id.toString()}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {/* Buscador */}
+                <PlayerSearchInput
+                  availablePlayers={getAvailablePlayers(index)}
+                  allPlayers={players}
+                  selectedPlayerId={player.playerId}
+                  onSelect={(playerId) => updatePlayer(index, playerId)}
+                />
 
+                {/* Puntos preview */}
                 {player.playerId && (
-                  <Badge variant="secondary" className="w-16 justify-center">
+                  <Badge variant="secondary" className="w-16 justify-center shrink-0">
                     {selectedPlayers.length - index + 1} pts
                   </Badge>
                 )}
 
+                {/* Eliminar slot */}
                 <Button
                   size="icon"
                   variant="ghost"
