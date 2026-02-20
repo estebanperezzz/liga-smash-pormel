@@ -21,7 +21,8 @@ export default function WeekChampionCard({ week }) {
       month: '2-digit',
     });
 
-  const backgroundImage = championImage ?? week.winnerCharacter?.image ?? null;
+  const finalCharacter = week.winnerCharacters?.[week.winnerCharacters.length - 1] ?? null;
+  const backgroundImage = championImage ?? finalCharacter?.image ?? null;
 
   const handleUploadClick = (e) => {
     e.stopPropagation();
@@ -92,7 +93,7 @@ export default function WeekChampionCard({ week }) {
       {backgroundImage ? (
         <Image
           src={backgroundImage}
-          alt={championImage ? `Campeón Semana ${week.weekNumber}` : (week.winnerCharacter?.name ?? '')}
+          alt={championImage ? `Campeón Semana ${week.weekNumber}` : (finalCharacter?.name ?? '')}
           fill
           className="object-cover transition-transform duration-300 group-hover:scale-105"
           unoptimized
@@ -153,17 +154,10 @@ export default function WeekChampionCard({ week }) {
         </div>
         <p className="text-white font-bold text-xl leading-tight drop-shadow-lg">
           {week.winner.name}
+          {week.winnerCharacters?.length > 0 && (
+            <span> - {week.winnerCharacters.map((c) => c.name).join(', ')}</span>
+          )}
         </p>
-        {week.winnerCharacter && !championImage && (
-          <p className="text-white/75 text-sm mt-0.5 drop-shadow">
-            {week.winnerCharacter.name}
-            {week.winnerCharacter.series && (
-              <span className="text-white/45 ml-1.5">
-                · {week.winnerCharacter.series}
-              </span>
-            )}
-          </p>
-        )}
       </div>
 
       {/* Controles de imagen — visibles al hacer hover */}
@@ -234,11 +228,13 @@ WeekChampionCard.propTypes = {
       id: PropTypes.number.isRequired,
       name: PropTypes.string.isRequired,
     }).isRequired,
-    winnerCharacter: PropTypes.shape({
-      name: PropTypes.string.isRequired,
-      image: PropTypes.string,
-      series: PropTypes.string,
-    }),
+    winnerCharacters: PropTypes.arrayOf(
+      PropTypes.shape({
+        name: PropTypes.string.isRequired,
+        image: PropTypes.string,
+        series: PropTypes.string,
+      })
+    ),
     winnerPoints: PropTypes.number,
     winnerMatchesPlayed: PropTypes.number,
   }).isRequired,

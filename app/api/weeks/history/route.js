@@ -16,6 +16,9 @@ export async function GET() {
         weeklyCharacters: {
           include: { character: true },
         },
+        characterChanges: {
+          include: { oldCharacter: true },
+        },
         matches: {
           include: {
             results: {
@@ -58,9 +61,20 @@ export async function GET() {
         if (!winner) return null;
 
         const winnerStats = playerPoints[winner.id];
-        const winnerCharacter =
-          week.weeklyCharacters.find((wc) => wc.playerId === winner.id)
-            ?.character || null;
+        const winnerCharacterRecord = week.weeklyCharacters.find(
+          (wc) => wc.playerId === winner.id
+        );
+        const winnerChange = week.characterChanges.find(
+          (cc) => cc.playerId === winner.id
+        );
+
+        const winnerCharacters = [];
+        if (winnerChange) {
+          winnerCharacters.push(winnerChange.oldCharacter);
+        }
+        if (winnerCharacterRecord?.character) {
+          winnerCharacters.push(winnerCharacterRecord.character);
+        }
 
         return {
           id: week.id,
@@ -69,7 +83,7 @@ export async function GET() {
           endDate: week.endDate,
           championImage: week.championImage ?? null,
           winner,
-          winnerCharacter,
+          winnerCharacters,
           winnerPoints: winnerStats?.totalPoints ?? null,
           winnerMatchesPlayed: winnerStats?.matchesPlayed ?? null,
         };
