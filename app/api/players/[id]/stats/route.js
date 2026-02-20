@@ -3,7 +3,8 @@ import prisma from '@/lib/prisma';
 
 export async function GET(request, { params }) {
   try {
-    const playerId = parseInt(params.id);
+    const { id } = await params;
+    const playerId = Number.parseInt(id);
 
     const player = await prisma.player.findUnique({
       where: { id: playerId },

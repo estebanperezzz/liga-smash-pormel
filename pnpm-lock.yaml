@@ -56,6 +56,9 @@ importers:
       prisma:
         specifier: ^6.1.0
         version: 6.19.2(typescript@5.9.3)
+      prop-types:
+        specifier: ^15.8.1
+        version: 15.8.1
       react:
         specifier: ^19.0.0
         version: 19.2.4

@@ -1,11 +1,19 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Crown, Calendar, Gamepad2, Star, User } from 'lucide-react';
+import { Crown, Calendar, Gamepad2, Star, User, Camera, Loader2, X } from 'lucide-react';
+import axios from 'axios';
+import PropTypes from 'prop-types';
 
 export default function WeekChampionCard({ week }) {
   const router = useRouter();
+  const fileInputRef = useRef(null);
+
+  const [championImage, setChampionImage] = useState(week.championImage ?? null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState(null);
 
   const formatDate = (date) =>
     new Date(date).toLocaleDateString('es-AR', {
@@ -13,18 +21,80 @@ export default function WeekChampionCard({ week }) {
       month: '2-digit',
     });
 
+  const backgroundImage = championImage ?? week.winnerCharacter?.image ?? null;
+
+  const handleUploadClick = (e) => {
+    e.stopPropagation();
+    setError(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input so el mismo archivo se puede volver a subir
+    e.target.value = '';
+
+    setUploading(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await axios.patch(
+        `/api/weeks/${week.id}/champion-image`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      setChampionImage(res.data.championImage);
+    } catch (err) {
+      setError(err.response?.data?.error ?? 'Error al subir la imagen');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteImage = async (e) => {
+    e.stopPropagation();
+    if (!confirm('¿Eliminar la foto del campeón?')) return;
+
+    setUploading(true);
+    setError(null);
+
+    try {
+      await axios.delete(`/api/weeks/${week.id}/champion-image`);
+      setChampionImage(null);
+    } catch (err) {
+      setError(err.response?.data?.error ?? 'Error al eliminar la imagen');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCardKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      router.push(`/players/${week.winner.id}`);
+    }
+  };
+
   return (
     <div
+      role="button"
+      tabIndex={0}
       className="relative h-64 rounded-2xl overflow-hidden border border-border shadow-lg cursor-pointer transition-all duration-200 hover:scale-[1.03] hover:shadow-xl group"
       onClick={() => router.push(`/players/${week.winner.id}`)}
+      onKeyDown={handleCardKeyDown}
     >
-      {/* Fondo: imagen del personaje */}
-      {week.winnerCharacter?.image ? (
+      {/* Fondo: championImage → personaje → placeholder */}
+      {backgroundImage ? (
         <Image
-          src={week.winnerCharacter.image}
-          alt={week.winnerCharacter.name || ''}
+          src={backgroundImage}
+          alt={championImage ? `Campeón Semana ${week.weekNumber}` : (week.winnerCharacter?.name ?? '')}
           fill
-          className="object-contain object-bottom transition-transform duration-300 group-hover:scale-105"
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
           unoptimized
         />
       ) : (
@@ -51,7 +121,7 @@ export default function WeekChampionCard({ week }) {
         </div>
       </div>
 
-      {/* Stats - debajo del badge semana si hay datos */}
+      {/* Stats */}
       {(week.winnerPoints !== null || week.winnerMatchesPlayed !== null) && (
         <div className="absolute top-11 left-3 flex gap-1.5 mt-1">
           {week.winnerPoints !== null && (
@@ -84,7 +154,7 @@ export default function WeekChampionCard({ week }) {
         <p className="text-white font-bold text-xl leading-tight drop-shadow-lg">
           {week.winner.name}
         </p>
-        {week.winnerCharacter && (
+        {week.winnerCharacter && !championImage && (
           <p className="text-white/75 text-sm mt-0.5 drop-shadow">
             {week.winnerCharacter.name}
             {week.winnerCharacter.series && (
@@ -95,6 +165,81 @@ export default function WeekChampionCard({ week }) {
           </p>
         )}
       </div>
+
+      {/* Controles de imagen — visibles al hacer hover */}
+      <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        {championImage && !uploading && (
+          <button
+            onClick={handleDeleteImage}
+            title="Eliminar foto"
+            className="bg-red-600/80 hover:bg-red-600 backdrop-blur-sm text-white rounded-full p-1.5 shadow transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+        <button
+          onClick={handleUploadClick}
+          disabled={uploading}
+          title={championImage ? 'Cambiar foto' : 'Subir foto del campeón'}
+          className="bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full p-1.5 shadow transition-colors disabled:opacity-50"
+        >
+          {uploading
+            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            : <Camera className="h-3.5 w-3.5" />
+          }
+        </button>
+      </div>
+
+      {/* Overlay de carga */}
+      {uploading && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-8 w-8 text-white animate-spin" />
+            <span className="text-white text-xs">Subiendo...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div
+          role="alert"
+          className="absolute bottom-0 left-0 right-0 bg-red-600/90 px-3 py-2 text-white text-xs text-center"
+        >
+          {error}
+        </div>
+      )}
+
+      {/* Input file oculto — stopPropagation evita que el click programático burbujee al div padre */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp"
+        className="hidden"
+        onClick={(e) => e.stopPropagation()}
+        onChange={handleFileChange}
+      />
     </div>
   );
 }
+
+WeekChampionCard.propTypes = {
+  week: PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    weekNumber: PropTypes.number.isRequired,
+    startDate: PropTypes.string.isRequired,
+    endDate: PropTypes.string.isRequired,
+    championImage: PropTypes.string,
+    winner: PropTypes.shape({
+      id: PropTypes.number.isRequired,
+      name: PropTypes.string.isRequired,
+    }).isRequired,
+    winnerCharacter: PropTypes.shape({
+      name: PropTypes.string.isRequired,
+      image: PropTypes.string,
+      series: PropTypes.string,
+    }),
+    winnerPoints: PropTypes.number,
+    winnerMatchesPlayed: PropTypes.number,
+  }).isRequired,
+};

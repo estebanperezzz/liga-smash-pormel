@@ -42,6 +42,7 @@ model Week {
   startDate         DateTime
   endDate           DateTime
   winnerId          Int?
+  championImage     String?
   createdAt         DateTime           @default(now())
   
   // Relaciones

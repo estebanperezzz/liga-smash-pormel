@@ -67,6 +67,7 @@ export async function GET() {
           weekNumber: week.weekNumber,
           startDate: week.startDate,
           endDate: week.endDate,
+          championImage: week.championImage ?? null,
           winner,
           winnerCharacter,
           winnerPoints: winnerStats?.totalPoints ?? null,
