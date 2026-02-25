@@ -1,13 +1,18 @@
 import { Inter } from 'next/font/google'
 import Link from 'next/link'
+import Image from 'next/image'
 import './globals.css'
-import { Trophy } from 'lucide-react'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
   title: 'Liga Smash Bros - Pormel',
   description: 'Liga Semanal de Super Smash Bros Ultimate',
+  icons: {
+    icon: '/logo.svg',
+    shortcut: '/logo.svg',
+    apple: '/logo.svg',
+  },
 }
 
 export default function RootLayout({ children }) {
@@ -18,11 +23,15 @@ export default function RootLayout({ children }) {
           {/* Header */}
           <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-background/80 backdrop-blur-xl">
             <div className="container flex h-16 items-center">
-              <Link href="/" className="flex items-center space-x-2 mr-6 group">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 shadow-md shadow-orange-500/30 group-hover:shadow-orange-500/50 transition-shadow">
-                  <Trophy className="h-4 w-4 text-white" />
-                </div>
-                <span className="font-bold text-xl gradient-text">Liga Smash Pormel</span>
+              <Link href="/" className="flex items-center mr-6 group">
+                <Image
+                  src="/logo.svg"
+                  alt="Liga Smash Pormel"
+                  width={120}
+                  height={90}
+                  className="h-12 w-auto transition-opacity group-hover:opacity-80"
+                  priority
+                />
               </Link>
 
               <nav className="flex items-center text-sm font-medium flex-1 flex-wrap gap-1">

@@ -113,22 +113,21 @@ export default function Home() {
         </div>
 
         <motion.div
-          className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 shadow-xl shadow-orange-600/30"
-          animate={{ rotate: [0, -4, 4, -2, 2, 0] }}
-          transition={{ duration: 1.8, delay: 1.2, repeat: Infinity, repeatDelay: 6 }}
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          whileHover={{ scale: 1.03 }}
+          className="drop-shadow-[0_0_40px_rgba(255,100,0,0.25)]"
         >
-          <Trophy className="h-10 w-10 text-white" />
+          <Image
+            src="/logo.svg"
+            alt="Liga Smash Pormel"
+            width={480}
+            height={360}
+            className="w-72 sm:w-96 md:w-[480px] h-auto mx-auto"
+            priority
+          />
         </motion.div>
-
-        <div className="space-y-3">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl md:text-7xl leading-none">
-            <span className="gradient-text">Liga Smash Bros</span>
-            <br />
-            <span className="text-foreground/75 text-3xl sm:text-4xl md:text-5xl font-semibold mt-2 block">
-              Ultimate — Pormel
-            </span>
-          </h1>
-        </div>
       </motion.div>
 
       {/* ── Stats strip ───────────────────────────────────────────────────── */}

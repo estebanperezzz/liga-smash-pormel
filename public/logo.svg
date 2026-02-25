@@ -1,0 +1,48 @@
+<svg viewBox="0 0 800 600" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="sphereGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#0052D4" />
+            <stop offset="35%" stop-color="#D400FF" />
+            <stop offset="65%" stop-color="#FF416C" />
+            <stop offset="100%" stop-color="#FF8A00" />
+        </linearGradient>
+
+        <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#FF416C" />
+            <stop offset="100%" stop-color="#FF8A00" />
+        </linearGradient>
+
+        <pattern id="dotPattern" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+            <circle cx="8" cy="8" r="5" fill="white" />
+        </pattern>
+
+        <mask id="smashMask">
+            <circle cx="400" cy="180" r="120" fill="url(#dotPattern)" />
+            <rect x="365" y="40" width="22" height="280" fill="black" />
+            <rect x="250" y="200" width="300" height="22" fill="black" />
+        </mask>
+
+        <mask id="textSlice">
+            <rect x="0" y="0" width="800" height="600" fill="white" />
+            <polygon points="40,395 760,365 760,373 40,403" fill="black" />
+        </mask>
+    </defs>
+
+    <circle cx="400" cy="185" r="120" fill="rgba(0, 0, 0, 0.2)" mask="url(#smashMask)" />
+    <circle cx="400" cy="180" r="120" fill="url(#sphereGrad)" mask="url(#smashMask)" />
+
+    <g mask="url(#textSlice)">
+        <text x="400" y="340" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="900" font-size="45" fill="#F0F4F8" letter-spacing="4">SUPER SMASH</text>
+
+        <text x="403" y="433" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="900" font-size="80" fill="url(#orangeGrad)" letter-spacing="2">
+            PORMEL LEAGUE
+        </text>
+
+        <text x="400" y="430" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="900" font-size="80" fill="#F0F4F8" letter-spacing="2">
+            PORMEL LEAGUE
+        </text>
+    </g>
+
+    <path d="M 80,480 Q 400,435 720,480 Q 400,455 80,480 Z" fill="url(#orangeGrad)" />
+
+</svg>

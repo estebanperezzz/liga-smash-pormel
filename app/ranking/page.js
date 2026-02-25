@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trophy, Medal, Award, User, RefreshCw } from 'lucide-react';
+import { Trophy, User, RefreshCw } from 'lucide-react';
 import PodiumCard from './components/PodiumCard';
 
 export default function RankingPage() {
