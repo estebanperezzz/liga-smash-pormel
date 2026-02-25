@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +10,7 @@ import { Trophy, Crown, Calendar, Star, Swords } from 'lucide-react';
 import WeekChampionCard from './components/WeekChampionCard';
 
 export default function HistoryPage() {
+  const router = useRouter();
   const [history, setHistory] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -118,7 +120,8 @@ export default function HistoryPage() {
                   return (
                     <TableRow
                       key={champion.playerId}
-                      className={index < 3 ? rowStyles[index] : ''}
+                      className={`cursor-pointer hover:opacity-80 transition-opacity ${index < 3 ? rowStyles[index] : ''}`}
+                      onClick={() => router.push(`/players/${champion.playerId}`)}
                     >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
@@ -213,7 +216,8 @@ export default function HistoryPage() {
                   return (
                     <TableRow
                       key={player.playerId}
-                      className={index < 3 ? rowStyles[index] : ''}
+                      className={`cursor-pointer hover:opacity-80 transition-opacity ${index < 3 ? rowStyles[index] : ''}`}
+                      onClick={() => router.push(`/players/${player.playerId}`)}
                     >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">

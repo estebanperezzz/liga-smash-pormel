@@ -1,15 +1,37 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, Users, ChevronRight } from 'lucide-react';
+import { UserPlus, Users, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+
+function SortableHead({ label, sortKey, sortConfig, onSort, className }) {
+  const isActive = sortConfig.key === sortKey;
+  return (
+    <TableHead className={className}>
+      <button
+        onClick={() => onSort(sortKey)}
+        className="flex items-center gap-1 hover:text-foreground transition-colors"
+      >
+        {label}
+        {isActive ? (
+          sortConfig.direction === 'asc' ? (
+            <ChevronUp className="h-3 w-3" />
+          ) : (
+            <ChevronDown className="h-3 w-3" />
+          )
+        ) : (
+          <ChevronsUpDown className="h-3 w-3 opacity-40" />
+        )}
+      </button>
+    </TableHead>
+  );
+}
 
 export default function PlayersPage() {
   const router = useRouter();
@@ -17,6 +39,7 @@ export default function PlayersPage() {
   const [newPlayerName, setNewPlayerName] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
 
   useEffect(() => {
     fetchPlayers();
@@ -47,6 +70,42 @@ export default function PlayersPage() {
       setSubmitting(false);
     }
   };
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+    }));
+  };
+
+  const sortedPlayers = useMemo(() => {
+    return [...players].sort((a, b) => {
+      let aVal, bVal;
+
+      if (sortConfig.key === 'currentCharacter') {
+        aVal = a.currentCharacter?.name ?? '';
+        bVal = b.currentCharacter?.name ?? '';
+      } else if (sortConfig.key === 'favoriteCharacter') {
+        aVal = a.favoriteCharacter?.name ?? '';
+        bVal = b.favoriteCharacter?.name ?? '';
+      } else if (sortConfig.key === 'avgPosition') {
+        aVal = a.avgPosition !== null ? parseFloat(a.avgPosition) : Infinity;
+        bVal = b.avgPosition !== null ? parseFloat(b.avgPosition) : Infinity;
+      } else {
+        aVal = a[sortConfig.key];
+        bVal = b[sortConfig.key];
+      }
+
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortConfig.direction === 'asc'
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      }
+
+      const diff = aVal - bVal;
+      return sortConfig.direction === 'asc' ? diff : -diff;
+    });
+  }, [players, sortConfig]);
 
   if (loading) {
     return (
@@ -115,14 +174,17 @@ export default function PlayersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[80px]">ID</TableHead>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Desde</TableHead>
-                  <TableHead className="text-right">Estado</TableHead>
+                  <SortableHead label="#" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[60px]" />
+                  <SortableHead label="Nombre" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
+                  <SortableHead label="Personaje Actual" sortKey="currentCharacter" sortConfig={sortConfig} onSort={handleSort} />
+                  <SortableHead label="PJ Favorito" sortKey="favoriteCharacter" sortConfig={sortConfig} onSort={handleSort} />
+                  <SortableHead label="Posición Promedio" sortKey="avgPosition" sortConfig={sortConfig} onSort={handleSort} />
+                  <SortableHead label="Total Partidas" sortKey="totalMatches" sortConfig={sortConfig} onSort={handleSort} />
+                  <SortableHead label="Victorias" sortKey="wins" sortConfig={sortConfig} onSort={handleSort} />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {players.map((player) => (
+                {sortedPlayers.map((player) => (
                   <TableRow
                     key={player.id}
                     className="cursor-pointer hover:bg-muted/80 transition-colors"
@@ -130,12 +192,57 @@ export default function PlayersPage() {
                   >
                     <TableCell className="font-medium text-muted-foreground">#{player.id}</TableCell>
                     <TableCell className="font-semibold">{player.name}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(player.createdAt).toLocaleDateString('es-AR')}
+                    <TableCell>
+                      {player.currentCharacter ? (
+                        <div className="flex items-center gap-2">
+                          {player.currentCharacter.image ? (
+                            <img
+                              src={player.currentCharacter.image}
+                              alt={player.currentCharacter.name}
+                              className="h-7 w-7 rounded-full object-cover border border-border bg-muted"
+                            />
+                          ) : (
+                            <div className="h-7 w-7 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-muted-foreground">
+                              {player.currentCharacter.name.charAt(0)}
+                            </div>
+                          )}
+                          <span className="text-sm">{player.currentCharacter.name}</span>
+                        </div>
+                      ) : null}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Badge variant="secondary">Activo</Badge>
+                    <TableCell>
+                      {player.favoriteCharacter ? (
+                        <div className="flex items-center gap-2">
+                          {player.favoriteCharacter.image ? (
+                            <img
+                              src={player.favoriteCharacter.image}
+                              alt={player.favoriteCharacter.name}
+                              className="h-7 w-7 rounded-full object-cover border border-border bg-muted"
+                            />
+                          ) : (
+                            <div className="h-7 w-7 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-muted-foreground">
+                              {player.favoriteCharacter.name.charAt(0)}
+                            </div>
+                          )}
+                          <span className="text-sm">{player.favoriteCharacter.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {player.avgPosition !== null ? (
+                        <span className="text-sm font-medium">{player.avgPosition}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm font-semibold">{player.totalMatches ?? 0}</span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">{player.wins}</span>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>
                     </TableCell>

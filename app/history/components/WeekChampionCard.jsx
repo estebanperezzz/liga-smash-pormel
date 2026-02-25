@@ -77,7 +77,7 @@ export default function WeekChampionCard({ week }) {
 
   const handleCardKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
-      router.push(`/players/${week.winner.id}`);
+      router.push(`/week/${week.id}`);
     }
   };
 
@@ -86,7 +86,7 @@ export default function WeekChampionCard({ week }) {
       role="button"
       tabIndex={0}
       className="relative h-64 rounded-2xl overflow-hidden border border-border shadow-lg cursor-pointer transition-all duration-200 hover:scale-[1.03] hover:shadow-xl group"
-      onClick={() => router.push(`/players/${week.winner.id}`)}
+      onClick={() => router.push(`/week/${week.id}`)}
       onKeyDown={handleCardKeyDown}
     >
       {/* Fondo: championImage → personaje → placeholder */}

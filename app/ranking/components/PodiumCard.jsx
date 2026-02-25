@@ -34,7 +34,7 @@ const configs = {
   },
 };
 
-export default function PodiumCard({ player, position }) {
+export default function PodiumCard({ player, position, imageFit }) {
   const router = useRouter();
   const config = configs[position];
 
@@ -50,7 +50,7 @@ export default function PodiumCard({ player, position }) {
             src={player.characterImage}
             alt={player.character || ''}
             fill
-            className="object-contain object-bottom"
+            className={imageFit ?? 'object-contain object-bottom'}
             unoptimized
           />
         ) : (
