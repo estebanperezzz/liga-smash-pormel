@@ -90,9 +90,30 @@ export async function GET() {
       })
       .filter(Boolean);
 
-    // Calcular ranking histórico de puntos (todos los jugadores, todas las semanas)
+    // Obtener la semana actual (activa) para incluir sus puntos en el ranking histórico
+    const currentWeek = await prisma.week.findFirst({
+      where: {
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+      include: {
+        matches: {
+          include: {
+            results: {
+              include: { player: true },
+            },
+          },
+        },
+      },
+    });
+
+    // Calcular ranking histórico de puntos (semanas completadas + semana actual)
+    const allWeeksForPoints = currentWeek
+      ? [...completedWeeks, currentWeek]
+      : completedWeeks;
+
     const historicalPoints = {};
-    completedWeeks.forEach((week) => {
+    allWeeksForPoints.forEach((week) => {
       week.matches.forEach((match) => {
         match.results.forEach((result) => {
           if (!historicalPoints[result.playerId]) {
