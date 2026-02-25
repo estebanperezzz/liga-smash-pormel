@@ -78,13 +78,21 @@ export default function RankingPage() {
       )}
 
       {/* Top 3 Podium */}
-      {ranking.length >= 3 && (
-        <div className="flex items-end gap-3">
-          <PodiumCard player={ranking[1]} position={2} />
-          <PodiumCard player={ranking[0]} position={1} />
-          <PodiumCard player={ranking[2]} position={3} />
-        </div>
-      )}
+      {ranking.length >= 3 && (() => {
+        // Tie detection: compute the real display position for each of the top 3
+        const pts = ranking.map(p => p.totalPoints);
+        const pos0 = 1;
+        const pos1 = pts[1] === pts[0] ? 1 : 2;
+        // Standard competition ranking: if pos0 & pos1 both = 1, next is 3rd (not 2nd)
+        const pos2 = pts[2] === pts[1] ? pos1 : 3;
+        return (
+          <div className="flex items-end gap-3">
+            <PodiumCard player={ranking[1]} position={2} displayPosition={pos1} />
+            <PodiumCard player={ranking[0]} position={1} displayPosition={pos0} />
+            <PodiumCard player={ranking[2]} position={3} displayPosition={pos2} />
+          </div>
+        );
+      })()}
 
       {/* Ranking Table */}
       <Card>
