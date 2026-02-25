@@ -51,7 +51,6 @@ export default function PodiumCard({ player, position, imageFit }) {
             alt={player.character || ''}
             fill
             className={imageFit ?? 'object-contain object-bottom'}
-            unoptimized
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-muted">

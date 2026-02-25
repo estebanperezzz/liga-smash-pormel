@@ -96,7 +96,6 @@ export default function WeekChampionCard({ week }) {
           alt={championImage ? `Campeón Semana ${week.weekNumber}` : (finalCharacter?.name ?? '')}
           fill
           className="object-cover transition-transform duration-300 group-hover:scale-105"
-          unoptimized
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-muted">

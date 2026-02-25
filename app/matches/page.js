@@ -236,7 +236,6 @@ export default function MatchesPage() {
                                   alt={result.character.name}
                                   fill
                                   className="object-contain p-1"
-                                  unoptimized
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">

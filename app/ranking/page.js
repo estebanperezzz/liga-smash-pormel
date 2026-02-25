@@ -163,7 +163,6 @@ export default function RankingPage() {
                             alt={player.character || 'Character'}
                             fill
                             className="object-contain p-1"
-                            unoptimized
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">

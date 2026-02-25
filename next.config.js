@@ -13,6 +13,18 @@ const nextConfig = {
         protocol: 'https',
         hostname: '**.githubusercontent.com',
       },
+      {
+        protocol: 'https',
+        hostname: '**.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.smashbros.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.wikia.nocookie.net',
+      },
     ],
   },
   webpack: (config) => {

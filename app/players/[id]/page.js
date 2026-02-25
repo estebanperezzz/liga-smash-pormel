@@ -144,7 +144,6 @@ export default function PlayerStatsPage() {
                   alt={favorite.characterName}
                   fill
                   className="object-contain p-2"
-                  unoptimized
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -204,7 +203,6 @@ export default function PlayerStatsPage() {
                         alt={charStat.characterName}
                         fill
                         className="object-contain p-1"
-                        unoptimized
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">

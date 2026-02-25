@@ -100,6 +100,7 @@ export default function CharactersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [eligibilityInfo, setEligibilityInfo] = useState(null);
   const [canChange, setCanChange] = useState(false);
+  const [availabilityFilter, setAvailabilityFilter] = useState('all');
 
   useEffect(() => {
     fetchData();
@@ -223,9 +224,12 @@ export default function CharactersPage() {
     }
   };
 
-  const filteredCharacters = characters.filter(c =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCharacters = characters.filter(c => {
+    if (!c.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if (availabilityFilter === 'available') return c.available && !c.usedPreviousWeek;
+    if (availabilityFilter === 'unavailable') return !c.available || c.usedPreviousWeek;
+    return true;
+  });
 
   const mySelection = weekInfo?.weeklyCharacters?.find(
     wc => wc.playerId === selectedPlayer
@@ -320,15 +324,36 @@ export default function CharactersPage() {
         </CardContent>
       </Card>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar personaje..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
+      {/* Search + Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar personaje..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex gap-2">
+          {[
+            { value: 'all', label: 'Todos' },
+            { value: 'available', label: 'Puedo elegir' },
+            { value: 'unavailable', label: 'No disponibles' },
+          ].map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => setAvailabilityFilter(value)}
+              className={`px-3 py-2 rounded-md text-sm font-medium border transition-colors whitespace-nowrap ${
+                availabilityFilter === value
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Characters Grid */}
@@ -363,7 +388,6 @@ export default function CharactersPage() {
                       alt={character.name}
                       fill
                       className="object-contain p-2"
-                      unoptimized
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
