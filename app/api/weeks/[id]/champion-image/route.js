@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { supabaseAdmin, CHAMPION_IMAGES_BUCKET } from '@/lib/supabase';
+import { auth } from '@/auth';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_SIZE_MB = 5;
@@ -8,6 +9,11 @@ const MAX_SIZE_MB = 5;
 // PATCH /api/weeks/[id]/champion-image
 // Sube una imagen al bucket de Supabase y guarda la URL en la semana
 export async function PATCH(request, { params }) {
+  const session = await auth();
+  if (session?.user?.role !== 'admin') {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  }
+
   try {
     const { id } = await params;
     const weekId = Number.parseInt(id);
@@ -88,6 +94,11 @@ export async function PATCH(request, { params }) {
 // DELETE /api/weeks/[id]/champion-image
 // Elimina la imagen del bucket y limpia el campo en la DB
 export async function DELETE(_request, { params }) {
+  const session = await auth();
+  if (session?.user?.role !== 'admin') {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  }
+
   try {
     const { id } = await params;
     const weekId = Number.parseInt(id);

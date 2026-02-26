@@ -12,7 +12,7 @@ export async function GET() {
         endDate: { lt: now },
       },
       include: {
-        winner: true,
+        winner: { include: { user: { select: { name: true, image: true } } } },
         weeklyCharacters: {
           include: { character: true },
         },
@@ -22,7 +22,7 @@ export async function GET() {
         matches: {
           include: {
             results: {
-              include: { player: true },
+              include: { player: { include: { user: { select: { name: true, image: true } } } } },
             },
           },
         },
@@ -100,7 +100,7 @@ export async function GET() {
         matches: {
           include: {
             results: {
-              include: { player: true },
+              include: { player: { include: { user: { select: { name: true, image: true } } } } },
             },
           },
         },
@@ -120,6 +120,8 @@ export async function GET() {
             historicalPoints[result.playerId] = {
               playerId: result.playerId,
               playerName: result.player.name,
+              userImage: result.player.user?.image ?? null,
+              userName: result.player.user?.name ?? null,
               totalPoints: 0,
               matchesPlayed: 0,
             };
@@ -145,6 +147,8 @@ export async function GET() {
         championStats[playerId] = {
           playerId,
           playerName,
+          userImage: week.winner.user?.image ?? null,
+          userName: week.winner.user?.name ?? null,
           championships: 0,
           weeks: [],
         };

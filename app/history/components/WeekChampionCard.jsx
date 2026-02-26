@@ -3,12 +3,15 @@
 import { useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Crown, Calendar, Gamepad2, Star, User, Camera, Loader2, X } from 'lucide-react';
 import axios from 'axios';
 import PropTypes from 'prop-types';
 
 export default function WeekChampionCard({ week }) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'admin';
   const fileInputRef = useRef(null);
 
   const [championImage, setChampionImage] = useState(week.championImage ?? null);
@@ -159,29 +162,31 @@ export default function WeekChampionCard({ week }) {
         </p>
       </div>
 
-      {/* Controles de imagen — visibles al hacer hover */}
-      <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-        {championImage && !uploading && (
+      {/* Controles de imagen — solo admin, visibles al hacer hover */}
+      {isAdmin && (
+        <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          {championImage && !uploading && (
+            <button
+              onClick={handleDeleteImage}
+              title="Eliminar foto"
+              className="bg-red-600/80 hover:bg-red-600 backdrop-blur-sm text-white rounded-full p-1.5 shadow transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
-            onClick={handleDeleteImage}
-            title="Eliminar foto"
-            className="bg-red-600/80 hover:bg-red-600 backdrop-blur-sm text-white rounded-full p-1.5 shadow transition-colors"
+            onClick={handleUploadClick}
+            disabled={uploading}
+            title={championImage ? 'Cambiar foto' : 'Subir foto del campeón'}
+            className="bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full p-1.5 shadow transition-colors disabled:opacity-50"
           >
-            <X className="h-3.5 w-3.5" />
+            {uploading
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <Camera className="h-3.5 w-3.5" />
+            }
           </button>
-        )}
-        <button
-          onClick={handleUploadClick}
-          disabled={uploading}
-          title={championImage ? 'Cambiar foto' : 'Subir foto del campeón'}
-          className="bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-full p-1.5 shadow transition-colors disabled:opacity-50"
-        >
-          {uploading
-            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            : <Camera className="h-3.5 w-3.5" />
-          }
-        </button>
-      </div>
+        </div>
+      )}
 
       {/* Overlay de carga */}
       {uploading && (

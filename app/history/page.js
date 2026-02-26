@@ -9,6 +9,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Trophy, Crown, Calendar, Star, Swords } from 'lucide-react';
 import WeekChampionCard from './components/WeekChampionCard';
 
+function PlayerAvatar({ userImage, userName, playerName }) {
+  if (!userName && !userImage) return null;
+  const display = userName ?? playerName;
+  return userImage ? (
+    <img
+      src={userImage}
+      alt={display}
+      className="h-7 w-7 rounded-full object-cover border border-border flex-shrink-0"
+    />
+  ) : (
+    <div className="h-7 w-7 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
+      {display.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
 export default function HistoryPage() {
   const router = useRouter();
   const [history, setHistory] = useState(null);
@@ -132,9 +148,12 @@ export default function HistoryPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={`font-semibold ${index === 0 ? 'text-yellow-600 dark:text-yellow-400' : ''}`}>
-                          {champion.playerName}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <PlayerAvatar userImage={champion.userImage} userName={champion.userName} playerName={champion.playerName} />
+                          <span className={`font-semibold ${index === 0 ? 'text-yellow-600 dark:text-yellow-400' : ''}`}>
+                            {champion.playerName}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <Badge
@@ -228,9 +247,12 @@ export default function HistoryPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={`font-semibold ${index === 0 ? 'text-yellow-600 dark:text-yellow-400' : ''}`}>
-                          {player.playerName}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <PlayerAvatar userImage={player.userImage} userName={player.userName} playerName={player.playerName} />
+                          <span className={`font-semibold ${index === 0 ? 'text-yellow-600 dark:text-yellow-400' : ''}`}>
+                            {player.playerName}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant="outline" className="text-xs">

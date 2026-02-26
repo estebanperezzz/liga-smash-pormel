@@ -2,6 +2,7 @@ import { Inter } from 'next/font/google'
 import Link from 'next/link'
 import Image from 'next/image'
 import { auth, signIn, signOut } from '@/auth'
+import Providers from './providers'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -112,7 +113,7 @@ export default async function RootLayout({ children }) {
 
           {/* Main Content */}
           <main className="flex-1 container py-6">
-            {children}
+            <Providers>{children}</Providers>
           </main>
 
           {/* Footer */}
