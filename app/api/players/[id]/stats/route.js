@@ -8,6 +8,9 @@ export async function GET(request, { params }) {
 
     const player = await prisma.player.findUnique({
       where: { id: playerId },
+      include: {
+        user: { select: { name: true, image: true } },
+      },
     });
 
     if (!player) {

@@ -69,6 +69,19 @@ export default function PlayerStatsPage() {
         <Button variant="ghost" size="icon" onClick={() => router.push('/players')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
+        {player.user && (
+          player.user.image ? (
+            <img
+              src={player.user.image}
+              alt={player.user.name ?? player.name}
+              className="h-16 w-16 rounded-full object-cover border-2 border-border shadow-md flex-shrink-0"
+            />
+          ) : (
+            <div className="h-16 w-16 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center text-2xl font-bold text-primary flex-shrink-0">
+              {(player.user.name ?? player.name).charAt(0).toUpperCase()}
+            </div>
+          )
+        )}
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{player.name}</h1>
           <p className="text-muted-foreground">

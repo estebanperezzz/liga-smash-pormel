@@ -19,6 +19,9 @@ export async function GET() {
     const players = await prisma.player.findMany({
       orderBy: { name: 'asc' },
       include: {
+        user: {
+          select: { name: true, image: true },
+        },
         matchResults: {
           include: {
             match: {

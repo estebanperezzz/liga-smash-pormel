@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,32 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { UserPlus, Users, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+
+function UserTooltip({ name, children }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+
+  const show = () => {
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setPos({ x: rect.left + rect.width / 2, y: rect.top });
+    }
+  };
+
+  return (
+    <div ref={ref} className="w-fit" onMouseEnter={show} onMouseLeave={() => setPos(null)}>
+      {children}
+      {pos && (
+        <div
+          style={{ position: 'fixed', left: pos.x, top: pos.y - 8, transform: 'translate(-50%, -100%)' }}
+          className="px-2 py-1 rounded bg-popover border border-border text-xs text-popover-foreground whitespace-nowrap shadow-md z-50 pointer-events-none"
+        >
+          {name}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SortableHead({ label, sortKey, sortConfig, onSort, className }) {
   const isActive = sortConfig.key === sortKey;
@@ -174,7 +200,7 @@ export default function PlayersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <SortableHead label="#" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[60px]" />
+                  <TableHead className="w-[52px]">Usuario</TableHead>
                   <SortableHead label="Nombre" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
                   <SortableHead label="Personaje Actual" sortKey="currentCharacter" sortConfig={sortConfig} onSort={handleSort} />
                   <SortableHead label="PJ Favorito" sortKey="favoriteCharacter" sortConfig={sortConfig} onSort={handleSort} />
@@ -190,7 +216,25 @@ export default function PlayersPage() {
                     className="cursor-pointer hover:bg-muted/80 transition-colors"
                     onClick={() => router.push(`/players/${player.id}`)}
                   >
-                    <TableCell className="font-medium text-muted-foreground">#{player.id}</TableCell>
+                    <TableCell>
+                      {player.user ? (
+                        <UserTooltip name={player.user.name ?? player.name}>
+                          {player.user.image ? (
+                            <img
+                              src={player.user.image}
+                              alt={player.user.name ?? player.name}
+                              className="h-8 w-8 rounded-full object-cover border border-border"
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-xs font-bold text-primary">
+                              {(player.user.name ?? player.name).charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </UserTooltip>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="font-semibold">{player.name}</TableCell>
                     <TableCell>
                       {player.currentCharacter ? (
