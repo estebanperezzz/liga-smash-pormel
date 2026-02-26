@@ -25,6 +25,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: '**.wikia.nocookie.net',
       },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
     ],
   },
   webpack: (config) => {

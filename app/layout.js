@@ -1,6 +1,7 @@
 import { Inter } from 'next/font/google'
 import Link from 'next/link'
 import Image from 'next/image'
+import { auth, signIn, signOut } from '@/auth'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -15,7 +16,9 @@ export const metadata = {
   },
 }
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const session = await auth()
+
   return (
     <html lang="es" className="dark">
       <body className={inter.className}>
@@ -51,7 +54,59 @@ export default function RootLayout({ children }) {
                     {item.label}
                   </Link>
                 ))}
+                {session?.user?.role === 'admin' && (
+                  <Link
+                    href="/admin"
+                    className="px-3 py-1.5 rounded-md transition-all duration-200 hover:text-orange-400 hover:bg-orange-500/10 text-orange-500/70 font-semibold"
+                  >
+                    Admin
+                  </Link>
+                )}
               </nav>
+
+              {/* Auth */}
+              <div className="flex items-center gap-3 ml-4">
+                {session?.user ? (
+                  <>
+                    {session.user.image && (
+                      <Image
+                        src={session.user.image}
+                        alt={session.user.name ?? 'Usuario'}
+                        width={32}
+                        height={32}
+                        className="rounded-full ring-2 ring-orange-500/40"
+                      />
+                    )}
+                    <form
+                      action={async () => {
+                        'use server'
+                        await signOut({ redirectTo: '/' })
+                      }}
+                    >
+                      <button
+                        type="submit"
+                        className="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 hover:text-orange-400 hover:bg-orange-500/10 text-muted-foreground"
+                      >
+                        Salir
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <form
+                    action={async () => {
+                      'use server'
+                      await signIn('google')
+                    }}
+                  >
+                    <button
+                      type="submit"
+                      className="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 text-orange-400 hover:bg-orange-500/10 border border-orange-500/30 hover:border-orange-500/60"
+                    >
+                      Entrar
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
           </header>
 
