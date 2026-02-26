@@ -10,6 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Trophy, User, RefreshCw } from 'lucide-react';
 import PodiumCard from './components/PodiumCard';
 
+// Standard competition ranking: 1 + number of players with strictly more points
+function computeRanks(players) {
+  return players.map((player) =>
+    1 + players.filter(p => p.totalPoints > player.totalPoints).length
+  );
+}
+
 export default function RankingPage() {
   const router = useRouter();
   const [ranking, setRanking] = useState([]);
@@ -123,7 +130,9 @@ export default function RankingPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                  {ranking.slice(3).map((player, index) => (
+                  {(() => {
+                    const ranks = computeRanks(ranking);
+                    return ranking.slice(3).map((player, index) => (
                   <TableRow
                     key={player.playerId}
                     className={`cursor-pointer hover:bg-muted/80 transition-colors`}
@@ -131,7 +140,7 @@ export default function RankingPage() {
                   >
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <span>{index + 4}</span>
+                        <span>{ranks[3 + index]}</span>
                       </div>
                     </TableCell>
 
@@ -185,7 +194,8 @@ export default function RankingPage() {
                       {player.totalPoints}
                     </TableCell>
                   </TableRow>
-                ))}
+                    ))
+                  })()}
               </TableBody>
             </Table>
           )}

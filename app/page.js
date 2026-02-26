@@ -39,6 +39,13 @@ const positionConfig = {
   3: { label: '🥉', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/30' },
 }
 
+// Standard competition ranking: 1 + number of players with strictly more points
+function computeRanks(players) {
+  return players.map((player) =>
+    1 + players.filter(p => p.totalPoints > player.totalPoints).length
+  )
+}
+
 // ─── Helper ───────────────────────────────────────────────────────────────────
 function CharacterAvatar({ src, name, size = 'md' }) {
   const [error, setError] = useState(false)
@@ -97,6 +104,8 @@ export default function Home() {
   const topPlayers   = historyData?.historicalPointsRanking?.slice(0, 3) ?? []
   const topWeekly    = rankingData?.ranking?.slice(0, 5) ?? []
   const totalWeeks   = historyData?.totalWeeks ?? 0
+  const weeklyRanks  = computeRanks(topWeekly)
+  const hofRanks     = computeRanks(topPlayers)
 
   return (
     <div className="space-y-14">
@@ -202,7 +211,7 @@ export default function Home() {
             ) : (
               <div className="divide-y divide-white/5">
                 {topWeekly.map((player, idx) => {
-                  const pos = idx + 1
+                  const pos = weeklyRanks[idx]
                   const cfg = positionConfig[pos]
                   return (
                     <motion.div
@@ -355,11 +364,11 @@ export default function Home() {
               [1,2,3].map(i => (
                 <Card key={i} className="border border-white/8 bg-card animate-pulse h-24" />
               ))
-            ) : (
-              topPlayers.map((player, idx) => {
-                const medals = ['🥇', '🥈', '🥉']
-                const glows = ['shadow-yellow-500/10', 'shadow-slate-400/10', 'shadow-orange-400/10']
+            ) : topPlayers.map((player, idx) => {
+                const medals  = ['🥇', '🥈', '🥉']
+                const glows   = ['shadow-yellow-500/10', 'shadow-slate-400/10', 'shadow-orange-400/10']
                 const borders = ['border-yellow-500/25 hover:border-yellow-500/40', 'border-slate-400/20 hover:border-slate-400/35', 'border-orange-400/20 hover:border-orange-400/35']
+                const cfgIdx  = hofRanks[idx] - 1
                 return (
                   <motion.div
                     key={player.playerId}
@@ -369,9 +378,9 @@ export default function Home() {
                     transition={{ delay: idx * 0.1, duration: 0.4 }}
                   >
                     <Link href={`/players/${player.playerId}`}>
-                      <Card className={`border ${borders[idx]} bg-card hover:shadow-xl ${glows[idx]} transition-all duration-300 hover:scale-[1.02] cursor-pointer group`}>
+                      <Card className={`border ${borders[cfgIdx]} bg-card hover:shadow-xl ${glows[cfgIdx]} transition-all duration-300 hover:scale-[1.02] cursor-pointer group`}>
                         <CardContent className="px-4 py-4 flex items-center gap-3">
-                          <span className="text-2xl flex-shrink-0">{medals[idx]}</span>
+                          <span className="text-2xl flex-shrink-0">{medals[cfgIdx]}</span>
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-sm group-hover:text-orange-400 transition-colors truncate">{player.playerName}</p>
                             <p className="text-xs text-muted-foreground">{player.matchesPlayed} partidas</p>
@@ -386,7 +395,7 @@ export default function Home() {
                   </motion.div>
                 )
               })
-            )}
+            }
           </div>
         </motion.div>
       )}
