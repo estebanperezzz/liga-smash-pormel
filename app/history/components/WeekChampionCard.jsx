@@ -126,7 +126,7 @@ export default function WeekChampionCard({ week }) {
 
       {/* Stats */}
       {(week.winnerPoints !== null || week.winnerMatchesPlayed !== null) && (
-        <div className="absolute top-11 left-3 flex gap-1.5 mt-1">
+        <div className="absolute top-11 left-3 flex flex-col gap-1 mt-1">
           {week.winnerPoints !== null && (
             <div className="flex items-center gap-1 bg-yellow-400/20 backdrop-blur-sm px-2 py-0.5 rounded-full border border-yellow-400/30">
               <Star className="h-3 w-3 text-yellow-400" />
