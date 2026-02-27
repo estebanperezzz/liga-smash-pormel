@@ -6,10 +6,15 @@ export async function GET() {
   try {
     const now = new Date();
 
-    // Obtener todas las semanas completadas
+    // Obtener todas las semanas completadas:
+    // - endDate ya pasó, O
+    // - tiene campeón registrado (auto-cerrada durante el gap del mismo viernes)
     const completedWeeks = await prisma.week.findMany({
       where: {
-        endDate: { lt: now },
+        OR: [
+          { endDate: { lt: now } },
+          { winnerId: { not: null } },
+        ],
       },
       include: {
         winner: { include: { user: { select: { name: true, image: true } } } },
@@ -90,11 +95,13 @@ export async function GET() {
       })
       .filter(Boolean);
 
-    // Obtener la semana actual (activa) para incluir sus puntos en el ranking histórico
+    // Obtener la semana activa (si existe) para incluir sus puntos en el ranking histórico
+    // Solo aplica fuera del gap; durante el gap no hay semana activa
     const currentWeek = await prisma.week.findFirst({
       where: {
         startDate: { lte: now },
         endDate: { gte: now },
+        winnerId: null, // si ya tiene campeón, está en completedWeeks
       },
       include: {
         matches: {
