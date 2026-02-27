@@ -4,16 +4,14 @@ import prisma from '@/lib/prisma';
 function isWithinChangeWindow() {
   const now = new Date();
   const day = now.getDay();
-  const hour = now.getHours();
-  const minutes = now.getMinutes();
-  const timeInMinutes = hour * 60 + minutes;
+  const timeInMinutes = now.getHours() * 60 + now.getMinutes();
 
   const tuesday14h = 14 * 60 + 0;
-  const friday18h = 18 * 60 + 0;
+  const friday14h = 14 * 60 + 0; // La semana cierra a las 14:30, corte a las 14:00
 
   if (day === 2 && timeInMinutes >= tuesday14h) return true;
   if (day === 3 || day === 4) return true;
-  if (day === 5 && timeInMinutes < friday18h) return true;
+  if (day === 5 && timeInMinutes < friday14h) return true;
 
   return false;
 }
@@ -31,7 +29,7 @@ export async function POST(request) {
 
     if (!isWithinChangeWindow()) {
       return NextResponse.json(
-        { error: 'Los cambios están disponibles entre el martes 14:00 y el viernes 18:00' },
+        { error: 'Los cambios están disponibles entre el martes 14:00 y el viernes 14:00' },
         { status: 403 }
       );
     }

@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { isInWeekendGap } from '@/lib/utils';
 
 // POST /api/weeks/select-character - Seleccionar personaje para la semana
 export async function POST(request) {
   try {
+    if (isInWeekendGap(new Date())) {
+      return NextResponse.json(
+        { error: 'La selección de personajes está cerrada. Reabre el lunes a las 09:00' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { playerId, characterId, weekId } = body;
 

@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trophy, User, RefreshCw } from 'lucide-react';
+import { Trophy, User, RefreshCw, Lock } from 'lucide-react';
 import PodiumCard from './components/PodiumCard';
 
 // Standard competition ranking: 1 + number of players with strictly more points
@@ -69,14 +69,37 @@ export default function RankingPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Ranking Semanal</h1>
         <p className="text-muted-foreground">
-          Clasificación actualizada en tiempo real
+          {weekInfo?.isWeekend ? 'Ranking final de la semana cerrada' : 'Clasificación actualizada en tiempo real'}
         </p>
       </div>
+
+      {/* Banner: semana cerrada durante el gap */}
+      {weekInfo?.isWeekend && (
+        <div className="flex items-start gap-4 rounded-lg border border-orange-500/40 bg-orange-950/30 p-4">
+          <div className="mt-0.5 rounded-full bg-orange-500/20 p-2">
+            <Lock className="h-5 w-5 text-orange-400" />
+          </div>
+          <div>
+            <p className="font-semibold text-orange-300">Semana cerrada</p>
+            <p className="mt-1 text-sm text-orange-400/80">
+              Estás viendo el ranking final. La nueva semana arranca el lunes a las 09:00.
+            </p>
+          </div>
+        </div>
+      )}
 
       {weekInfo && (
         <Card>
           <CardHeader>
-            <CardTitle>Semana {weekInfo.weekNumber}</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Semana {weekInfo.weekNumber}
+              {weekInfo.isWeekend && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2.5 py-0.5 text-xs font-medium text-orange-400 border border-orange-500/30">
+                  <Lock className="h-3 w-3" />
+                  Cerrada
+                </span>
+              )}
+            </CardTitle>
             <CardDescription>
               {new Date(weekInfo.startDate).toLocaleDateString('es-AR')} - {new Date(weekInfo.endDate).toLocaleDateString('es-AR')}
             </CardDescription>

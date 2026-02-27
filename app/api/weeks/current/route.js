@@ -1,11 +1,38 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getWeekNumber, getMonday, getFriday } from '@/lib/utils';
+import { getWeekNumber, getMonday, getFriday, isInWeekendGap } from '@/lib/utils';
 
 // GET /api/weeks/current - Obtener la semana actual (o crearla si no existe)
+// Durante el gap (Vie 14:30 → Lun 09:00) devuelve la última semana con isWeekend: true
 export async function GET() {
   try {
     const now = new Date();
+
+    // Si estamos en el período de gap, devolver la última semana cerrada
+    if (isInWeekendGap(now)) {
+      const lastWeek = await prisma.week.findFirst({
+        where: { endDate: { lte: now } },
+        orderBy: { endDate: 'desc' },
+        include: {
+          winner: true,
+          weeklyCharacters: {
+            include: {
+              player: true,
+              character: true,
+            },
+          },
+        },
+      });
+
+      if (lastWeek) {
+        return NextResponse.json({ ...lastWeek, isWeekend: true });
+      }
+
+      // Si nunca hubo ninguna semana, devolver estructura vacía
+      return NextResponse.json({ isWeekend: true, weeklyCharacters: [] });
+    }
+
+    // Semana activa: Lun 09:00 → Vie 14:30
     const monday = getMonday(now);
     const friday = getFriday(now);
     const weekNumber = getWeekNumber(now);
@@ -79,7 +106,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json(currentWeek);
+    return NextResponse.json({ ...currentWeek, isWeekend: false });
   } catch (error) {
     console.error('Error fetching current week:', error);
     console.error('Error details:', error.message);

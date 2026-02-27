@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, Check, X, User, AlertCircle, RefreshCw, Clock } from 'lucide-react';
+import { Search, Check, X, User, AlertCircle, RefreshCw, Clock, Lock } from 'lucide-react';
 
 function PlayerSearchInput({ players, selectedPlayerId, onSelect }) {
   const [query, setQuery] = useState('');
@@ -255,6 +255,21 @@ export default function CharactersPage() {
         </p>
       </div>
 
+      {/* Banner: semana cerrada durante el gap */}
+      {weekInfo?.isWeekend && (
+        <div className="flex items-start gap-4 rounded-lg border border-orange-500/40 bg-orange-950/30 p-4">
+          <div className="mt-0.5 rounded-full bg-orange-500/20 p-2">
+            <Lock className="h-5 w-5 text-orange-400" />
+          </div>
+          <div>
+            <p className="font-semibold text-orange-300">Selección de personajes cerrada</p>
+            <p className="mt-1 text-sm text-orange-400/80">
+              La semana terminó el viernes a las 14:30. La selección para la nueva semana abre el lunes a las 09:00.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Player Selection */}
       <Card>
         <CardHeader>
@@ -324,8 +339,8 @@ export default function CharactersPage() {
         </CardContent>
       </Card>
 
-      {/* Search + Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      {/* Search + Filters — ocultos en gap */}
+      <div className={`flex flex-col sm:flex-row gap-3 ${weekInfo?.isWeekend ? 'pointer-events-none opacity-40' : ''}`}>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
@@ -356,8 +371,8 @@ export default function CharactersPage() {
         </div>
       </div>
 
-      {/* Characters Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+      {/* Characters Grid — deshabilitado en gap */}
+      <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 ${weekInfo?.isWeekend ? 'pointer-events-none opacity-40' : ''}`}>
         {filteredCharacters.map((character) => {
           const isMyCharacter = mySelection?.characterId === character.id;
           const canSelect = character.available || isMyCharacter;
