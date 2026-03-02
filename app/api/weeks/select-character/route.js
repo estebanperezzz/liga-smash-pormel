@@ -13,6 +13,7 @@ export async function POST(request) {
         { status: 401 }
       );
     }
+    const isAdmin = session.user.role === 'admin';
 
     if (isInWeekendGap(new Date())) {
       return NextResponse.json(
@@ -34,18 +35,20 @@ export async function POST(request) {
       );
     }
 
-    if (!session.user.playerId) {
-      return NextResponse.json(
-        { error: 'No tienes un jugador asignado' },
-        { status: 403 }
-      );
-    }
+    if (!isAdmin) {
+      if (!session.user.playerId) {
+        return NextResponse.json(
+          { error: 'No tienes un jugador asignado' },
+          { status: 403 }
+        );
+      }
 
-    if (session.user.playerId !== parsedPlayerId) {
-      return NextResponse.json(
-        { error: 'Solo puedes seleccionar personaje para tu propio jugador' },
-        { status: 403 }
-      );
+      if (session.user.playerId !== parsedPlayerId) {
+        return NextResponse.json(
+          { error: 'Solo puedes seleccionar personaje para tu propio jugador' },
+          { status: 403 }
+        );
+      }
     }
 
     // Verificar si el jugador ya seleccionó un personaje esta semana

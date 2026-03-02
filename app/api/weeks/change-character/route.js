@@ -26,6 +26,7 @@ export async function POST(request) {
         { status: 401 }
       );
     }
+    const isAdmin = session.user.role === 'admin';
 
     const { playerId, weekId, newCharacterId } = await request.json();
     const parsedPlayerId = parseInt(playerId);
@@ -39,18 +40,20 @@ export async function POST(request) {
       );
     }
 
-    if (!session.user.playerId) {
-      return NextResponse.json(
-        { error: 'No tienes un jugador asignado' },
-        { status: 403 }
-      );
-    }
+    if (!isAdmin) {
+      if (!session.user.playerId) {
+        return NextResponse.json(
+          { error: 'No tienes un jugador asignado' },
+          { status: 403 }
+        );
+      }
 
-    if (session.user.playerId !== parsedPlayerId) {
-      return NextResponse.json(
-        { error: 'Solo puedes cambiar personaje para tu propio jugador' },
-        { status: 403 }
-      );
+      if (session.user.playerId !== parsedPlayerId) {
+        return NextResponse.json(
+          { error: 'Solo puedes cambiar personaje para tu propio jugador' },
+          { status: 403 }
+        );
+      }
     }
 
     if (!isWithinChangeWindow()) {
