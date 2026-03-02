@@ -28,7 +28,7 @@ export default {
       }
 
       if (!isLoggedIn) {
-        return Response.redirect(new URL('/', nextUrl))
+        return Response.redirect(new URL('/?authRequired=1', nextUrl))
       }
       return true
     },

@@ -1,8 +1,10 @@
 import { Inter } from 'next/font/google'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Suspense } from 'react'
 import { auth, signIn, signOut } from '@/auth'
 import Providers from './providers'
+import AuthToast from '@/components/AuthToast'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -115,6 +117,10 @@ export default async function RootLayout({ children }) {
           <main className="flex-1 container py-6">
             <Providers>{children}</Providers>
           </main>
+
+          <Suspense>
+            <AuthToast />
+          </Suspense>
 
           {/* Footer */}
           <footer className="border-t border-white/5 py-6 md:py-0">
