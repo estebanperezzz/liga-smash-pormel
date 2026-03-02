@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import axios from 'axios';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,89 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Search, Check, X, User, AlertCircle, RefreshCw, Clock, Lock } from 'lucide-react';
 
-function PlayerSearchInput({ players, selectedPlayerId, onSelect }) {
-  const [query, setQuery] = useState('');
-  const [open, setOpen] = useState(false);
-  const inputRef = useRef(null);
-
-  const selectedPlayer = players.find(p => p.id === selectedPlayerId);
-
-  const filtered = players.filter(p =>
-    p.name.toLowerCase().includes(query.toLowerCase())
-  );
-
-  const displayValue = selectedPlayer ? selectedPlayer.name : query;
-
-  const handleChange = (e) => {
-    setQuery(e.target.value);
-    if (selectedPlayerId) onSelect(null);
-    setOpen(true);
-  };
-
-  const handleSelect = (player) => {
-    onSelect(player.id);
-    setQuery('');
-    setOpen(false);
-  };
-
-  const handleClear = () => {
-    onSelect(null);
-    setQuery('');
-    setOpen(true);
-    inputRef.current?.focus();
-  };
-
-  return (
-    <div className="relative">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-        <input
-          ref={inputRef}
-          value={displayValue}
-          onChange={handleChange}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          placeholder="Buscar jugador..."
-          className="w-full h-10 pl-9 pr-8 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        />
-        {selectedPlayer && (
-          <button
-            onMouseDown={handleClear}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            tabIndex={-1}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
-      {open && filtered.length > 0 && (
-        <ul className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
-          {filtered.map(player => (
-            <li key={player.id}>
-              <button
-                onMouseDown={() => handleSelect(player)}
-                className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
-                  player.id === selectedPlayerId ? 'bg-accent font-semibold' : ''
-                }`}
-              >
-                {player.name}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {open && filtered.length === 0 && query.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg px-3 py-2 text-sm text-muted-foreground text-center">
-          No se encontró &quot;{query}&quot;
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function CharactersPage() {
+  const { data: session } = useSession();
   const [characters, setCharacters] = useState([]);
   const [players, setPlayers] = useState([]);
   const [weekInfo, setWeekInfo] = useState(null);
@@ -101,10 +21,17 @@ export default function CharactersPage() {
   const [eligibilityInfo, setEligibilityInfo] = useState(null);
   const [canChange, setCanChange] = useState(false);
   const [availabilityFilter, setAvailabilityFilter] = useState('all');
+  const sessionPlayerId = session?.user?.playerId ?? null;
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (sessionPlayerId) {
+      setSelectedPlayer(sessionPlayerId);
+    }
+  }, [sessionPlayerId]);
 
   useEffect(() => {
     if (weekInfo) {
@@ -163,6 +90,17 @@ export default function CharactersPage() {
   };
 
   const handleSelectCharacter = async (characterId) => {
+    if (!sessionPlayerId) {
+      alert('Tu cuenta no tiene jugador asignado. Contacta a un administrador.');
+      return;
+    }
+
+    if (selectedPlayer !== sessionPlayerId) {
+      setSelectedPlayer(sessionPlayerId);
+      alert('Solo puedes seleccionar personaje para tu propio jugador.');
+      return;
+    }
+
     if (!selectedPlayer) {
       alert('Por favor selecciona un jugador primero');
       return;
@@ -279,11 +217,15 @@ export default function CharactersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <PlayerSearchInput
-            players={players}
-            selectedPlayerId={selectedPlayer}
-            onSelect={setSelectedPlayer}
-          />
+          {sessionPlayerId ? (
+            <div className="rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+              {players.find(p => p.id === sessionPlayerId)?.name ?? `Jugador ID ${sessionPlayerId}`}
+            </div>
+          ) : (
+            <p className="text-sm text-destructive">
+              Tu cuenta no tiene jugador asignado. Contacta a un administrador.
+            </p>
+          )}
 
           {/* Current Selection */}
           {mySelection && (
@@ -510,3 +452,4 @@ export default function CharactersPage() {
     </div>
   );
 }
+

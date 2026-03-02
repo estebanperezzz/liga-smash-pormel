@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { auth } from '@/auth';
 
 function isWithinChangeWindow() {
   const now = new Date();
@@ -18,12 +19,37 @@ function isWithinChangeWindow() {
 
 export async function POST(request) {
   try {
-    const { playerId, weekId, newCharacterId } = await request.json();
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      );
+    }
 
-    if (!playerId || !weekId || !newCharacterId) {
+    const { playerId, weekId, newCharacterId } = await request.json();
+    const parsedPlayerId = parseInt(playerId);
+    const parsedWeekId = parseInt(weekId);
+    const parsedNewCharacterId = parseInt(newCharacterId);
+
+    if (!parsedPlayerId || !parsedWeekId || !parsedNewCharacterId) {
       return NextResponse.json(
         { error: 'playerId, weekId y newCharacterId son requeridos' },
         { status: 400 }
+      );
+    }
+
+    if (!session.user.playerId) {
+      return NextResponse.json(
+        { error: 'No tienes un jugador asignado' },
+        { status: 403 }
+      );
+    }
+
+    if (session.user.playerId !== parsedPlayerId) {
+      return NextResponse.json(
+        { error: 'Solo puedes cambiar personaje para tu propio jugador' },
+        { status: 403 }
       );
     }
 
@@ -35,7 +61,7 @@ export async function POST(request) {
     }
 
     const matches = await prisma.match.findMany({
-      where: { weekId },
+      where: { weekId: parsedWeekId },
       include: {
         results: {
           include: { player: true },
@@ -62,7 +88,7 @@ export async function POST(request) {
 
     const bottom3Ids = ranking.slice(0, 3).map(p => p.playerId);
 
-    if (!bottom3Ids.includes(playerId)) {
+    if (!bottom3Ids.includes(parsedPlayerId)) {
       return NextResponse.json(
         { error: 'No estás entre los últimos 3 del ranking' },
         { status: 403 }
@@ -72,8 +98,8 @@ export async function POST(request) {
     const existingChange = await prisma.characterChange.findUnique({
       where: {
         playerId_weekId: {
-          playerId,
-          weekId,
+          playerId: parsedPlayerId,
+          weekId: parsedWeekId,
         },
       },
     });
@@ -88,8 +114,8 @@ export async function POST(request) {
     const currentSelection = await prisma.weeklyCharacter.findUnique({
       where: {
         playerId_weekId: {
-          playerId,
-          weekId,
+          playerId: parsedPlayerId,
+          weekId: parsedWeekId,
         },
       },
     });
@@ -104,13 +130,13 @@ export async function POST(request) {
     const characterTaken = await prisma.weeklyCharacter.findUnique({
       where: {
         characterId_weekId: {
-          characterId: newCharacterId,
-          weekId,
+          characterId: parsedNewCharacterId,
+          weekId: parsedWeekId,
         },
       },
     });
 
-    if (characterTaken && characterTaken.playerId !== playerId) {
+    if (characterTaken && characterTaken.playerId !== parsedPlayerId) {
       return NextResponse.json(
         { error: 'Este personaje ya está siendo usado por otro jugador' },
         { status: 400 }
@@ -120,10 +146,10 @@ export async function POST(request) {
     const result = await prisma.$transaction(async (tx) => {
       const change = await tx.characterChange.create({
         data: {
-          playerId,
-          weekId,
+          playerId: parsedPlayerId,
+          weekId: parsedWeekId,
           oldCharacterId: currentSelection.characterId,
-          newCharacterId,
+          newCharacterId: parsedNewCharacterId,
           reason: 'bottom3_rule',
         },
         include: {
@@ -135,12 +161,12 @@ export async function POST(request) {
       const updated = await tx.weeklyCharacter.update({
         where: {
           playerId_weekId: {
-            playerId,
-            weekId,
+            playerId: parsedPlayerId,
+            weekId: parsedWeekId,
           },
         },
         data: {
-          characterId: newCharacterId,
+          characterId: parsedNewCharacterId,
           hasChanged: true,
         },
         include: {

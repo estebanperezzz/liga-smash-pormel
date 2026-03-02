@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { isInWeekendGap } from '@/lib/utils';
+import { auth } from '@/auth';
 
 // POST /api/weeks/select-character - Seleccionar personaje para la semana
 export async function POST(request) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      );
+    }
+
     if (isInWeekendGap(new Date())) {
       return NextResponse.json(
         { error: 'La selección de personajes está cerrada. Reabre el lunes a las 09:00' },
@@ -14,11 +23,28 @@ export async function POST(request) {
 
     const body = await request.json();
     const { playerId, characterId, weekId } = body;
+    const parsedPlayerId = parseInt(playerId);
+    const parsedCharacterId = parseInt(characterId);
+    const parsedWeekId = parseInt(weekId);
 
-    if (!playerId || !characterId || !weekId) {
+    if (!parsedPlayerId || !parsedCharacterId || !parsedWeekId) {
       return NextResponse.json(
         { error: 'playerId, characterId y weekId son requeridos' },
         { status: 400 }
+      );
+    }
+
+    if (!session.user.playerId) {
+      return NextResponse.json(
+        { error: 'No tienes un jugador asignado' },
+        { status: 403 }
+      );
+    }
+
+    if (session.user.playerId !== parsedPlayerId) {
+      return NextResponse.json(
+        { error: 'Solo puedes seleccionar personaje para tu propio jugador' },
+        { status: 403 }
       );
     }
 
@@ -26,8 +52,8 @@ export async function POST(request) {
     const existingSelection = await prisma.weeklyCharacter.findUnique({
       where: {
         playerId_weekId: {
-          playerId: parseInt(playerId),
-          weekId: parseInt(weekId),
+          playerId: parsedPlayerId,
+          weekId: parsedWeekId,
         },
       },
     });
@@ -43,8 +69,8 @@ export async function POST(request) {
     const characterTaken = await prisma.weeklyCharacter.findUnique({
       where: {
         characterId_weekId: {
-          characterId: parseInt(characterId),
-          weekId: parseInt(weekId),
+          characterId: parsedCharacterId,
+          weekId: parsedWeekId,
         },
       },
       include: {
@@ -64,9 +90,9 @@ export async function POST(request) {
     // Crear la selección
     const selection = await prisma.weeklyCharacter.create({
       data: {
-        playerId: parseInt(playerId),
-        characterId: parseInt(characterId),
-        weekId: parseInt(weekId),
+        playerId: parsedPlayerId,
+        characterId: parsedCharacterId,
+        weekId: parsedWeekId,
       },
       include: {
         player: true,
