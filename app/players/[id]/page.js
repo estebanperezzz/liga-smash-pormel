@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trophy, Medal, Award, Gamepad2, Target, TrendingUp, ArrowLeft, User, Star } from 'lucide-react';
+import { Trophy, Medal, Award, Gamepad2, Target, TrendingUp, ArrowLeft, User, Star, ChevronDown, ChevronUp } from 'lucide-react';
 
 function getFavoriteCharacter(byCharacter) {
   if (!byCharacter || byCharacter.length === 0) return null;
@@ -31,6 +31,7 @@ export default function PlayerStatsPage() {
   const router = useRouter();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [expandedChar, setExpandedChar] = useState(null);
 
   useEffect(() => {
     axios.get(`/api/players/${id}/stats`)
@@ -202,69 +203,115 @@ export default function PlayerStatsPage() {
               <p className="text-muted-foreground">No hay datos de personajes aún</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {byCharacter.map((charStat) => (
-                <div
-                  key={charStat.characterId || 'none'}
-                  className="flex items-center gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
-                >
-                  {/* Character Image */}
-                  <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-gradient-to-br from-muted to-background border-2 flex-shrink-0">
-                    {charStat.characterImage ? (
-                      <Image
-                        src={charStat.characterImage}
-                        alt={charStat.characterName}
-                        fill
-                        className="object-contain p-1"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <User className="h-8 w-8 text-muted-foreground" />
+            <div className="space-y-2">
+              {byCharacter.map((charStat) => {
+                const key = charStat.characterId || 'none';
+                const isOpen = expandedChar === key;
+                const hasWeeks = charStat.byWeek && charStat.byWeek.length > 0;
+                return (
+                  <div key={key} className="rounded-lg border overflow-hidden">
+                    {/* Character row (clickable) */}
+                    <div
+                      className={`flex items-center gap-4 p-4 transition-colors ${hasWeeks ? 'cursor-pointer hover:bg-muted/50' : ''} ${isOpen ? 'bg-muted/30' : ''}`}
+                      onClick={() => hasWeeks && setExpandedChar(isOpen ? null : key)}
+                    >
+                      {/* Character Image */}
+                      <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-gradient-to-br from-muted to-background border-2 flex-shrink-0">
+                        {charStat.characterImage ? (
+                          <Image
+                            src={charStat.characterImage}
+                            alt={charStat.characterName}
+                            fill
+                            className="object-contain p-1"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <User className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Character Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold">{charStat.characterName}</p>
+                          {charStat.characterSeries && (
+                            <Badge variant="outline" className="text-xs">
+                              {charStat.characterSeries}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {charStat.matchesPlayed} {charStat.matchesPlayed === 1 ? 'partida' : 'partidas'} · Pos. promedio: {charStat.avgPosition}
+                        </p>
+                      </div>
+
+                      {/* Mini Stats */}
+                      <div className="flex items-center gap-4 flex-shrink-0">
+                        <div className="text-center">
+                          <div className="flex items-center gap-1 justify-center">
+                            <Trophy className="h-3.5 w-3.5 text-yellow-500" />
+                            <span className="font-bold text-yellow-500">{charStat.top1}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Top 1</p>
+                        </div>
+                        <div className="text-center">
+                          <div className="flex items-center gap-1 justify-center">
+                            <Medal className="h-3.5 w-3.5 text-orange-500" />
+                            <span className="font-bold text-orange-500">{charStat.top3}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Top 3</p>
+                        </div>
+                        <div className="text-center">
+                          <div className="flex items-center gap-1 justify-center">
+                            <Target className="h-3.5 w-3.5 text-primary" />
+                            <span className="font-bold text-primary">{charStat.totalPoints}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Puntos</p>
+                        </div>
+                        {hasWeeks && (
+                          <div className="text-muted-foreground ml-1">
+                            {isOpen
+                              ? <ChevronUp className="h-4 w-4" />
+                              : <ChevronDown className="h-4 w-4" />
+                            }
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Week breakdown (accordion) */}
+                    {isOpen && hasWeeks && (
+                      <div className="border-t bg-muted/10 divide-y divide-border/50">
+                        {charStat.byWeek.map((ws) => (
+                          <div key={ws.weekId} className="flex items-center gap-4 px-6 py-3">
+                            <p className="text-sm font-medium text-muted-foreground w-20 flex-shrink-0">
+                              Semana {ws.weekNumber}
+                            </p>
+                            <p className="text-sm text-muted-foreground flex-1">
+                              {ws.matchesPlayed} {ws.matchesPlayed === 1 ? 'partida' : 'partidas'} · Pos. prom: {ws.avgPosition}
+                            </p>
+                            <div className="flex items-center gap-4 flex-shrink-0">
+                              <div className="flex items-center gap-1">
+                                <Trophy className="h-3 w-3 text-yellow-500" />
+                                <span className="text-xs font-bold text-yellow-500">{ws.top1}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Medal className="h-3 w-3 text-orange-500" />
+                                <span className="text-xs font-bold text-orange-500">{ws.top3}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Target className="h-3 w-3 text-primary" />
+                                <span className="text-xs font-bold text-primary">{ws.totalPoints}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
-
-                  {/* Character Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold">{charStat.characterName}</p>
-                      {charStat.characterSeries && (
-                        <Badge variant="outline" className="text-xs">
-                          {charStat.characterSeries}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {charStat.matchesPlayed} {charStat.matchesPlayed === 1 ? 'partida' : 'partidas'} · Pos. promedio: {charStat.avgPosition}
-                    </p>
-                  </div>
-
-                  {/* Mini Stats */}
-                  <div className="flex items-center gap-4 flex-shrink-0">
-                    <div className="text-center">
-                      <div className="flex items-center gap-1 justify-center">
-                        <Trophy className="h-3.5 w-3.5 text-yellow-500" />
-                        <span className="font-bold text-yellow-500">{charStat.top1}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Top 1</p>
-                    </div>
-                    <div className="text-center">
-                      <div className="flex items-center gap-1 justify-center">
-                        <Medal className="h-3.5 w-3.5 text-orange-500" />
-                        <span className="font-bold text-orange-500">{charStat.top3}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Top 3</p>
-                    </div>
-                    <div className="text-center">
-                      <div className="flex items-center gap-1 justify-center">
-                        <Target className="h-3.5 w-3.5 text-primary" />
-                        <span className="font-bold text-primary">{charStat.totalPoints}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Puntos</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

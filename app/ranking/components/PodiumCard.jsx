@@ -114,11 +114,23 @@ export default function PodiumCard({ player, position, displayPosition, imageFit
               {player.character}
             </p>
           )}
-          <div className="flex items-baseline gap-1 mt-1.5">
-            <span className="text-white font-extrabold text-2xl leading-none tabular-nums drop-shadow">
-              {player.totalPoints}
-            </span>
-            <span className="text-white/45 text-xs font-medium">pts</span>
+          <div className="flex items-center justify-between mt-1.5">
+            <div className="flex items-baseline gap-1">
+              <span className="text-white font-extrabold text-2xl leading-none tabular-nums drop-shadow">
+                {player.totalPoints}
+              </span>
+              <span className="text-white/45 text-xs font-medium">pts</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-0.5">
+                <Trophy className="h-3 w-3 text-yellow-400" />
+                <span className="text-yellow-400 text-xs font-bold tabular-nums">{player.top1 ?? 0}</span>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <Medal className="h-3 w-3 text-orange-400" />
+                <span className="text-orange-400 text-xs font-bold tabular-nums">{player.top3 ?? 0}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -116,6 +116,7 @@ export async function GET(request, { params }) {
           top3: 0,
           totalPoints: 0,
           positions: [],
+          weekStats: {},
         };
       }
 
@@ -134,6 +135,7 @@ export async function GET(request, { params }) {
             top3: 0,
             totalPoints: 0,
             positions: [],
+            weekStats: {},
           };
         }
       }
@@ -155,6 +157,7 @@ export async function GET(request, { params }) {
           top3: 0,
           totalPoints: 0,
           positions: [],
+          weekStats: {},
         };
       }
 
@@ -164,6 +167,27 @@ export async function GET(request, { params }) {
       stat.positions.push(result.position);
       if (result.position === 1) stat.top1 += 1;
       if (result.position <= 3) stat.top3 += 1;
+
+      // Acumular por semana
+      const weekId = result.match.weekId;
+      const weekNumber = result.match.week.weekNumber;
+      if (!stat.weekStats[weekId]) {
+        stat.weekStats[weekId] = {
+          weekId,
+          weekNumber,
+          matchesPlayed: 0,
+          top1: 0,
+          top3: 0,
+          totalPoints: 0,
+          positions: [],
+        };
+      }
+      const ws = stat.weekStats[weekId];
+      ws.matchesPlayed += 1;
+      ws.totalPoints += result.points;
+      ws.positions.push(result.position);
+      if (result.position === 1) ws.top1 += 1;
+      if (result.position <= 3) ws.top3 += 1;
     });
 
     // Calcular avgPosition y ordenar por partidas jugadas
@@ -173,6 +197,19 @@ export async function GET(request, { params }) {
         avgPosition: stat.positions.length > 0
           ? (stat.positions.reduce((a, b) => a + b, 0) / stat.positions.length).toFixed(1)
           : '-',
+        byWeek: Object.values(stat.weekStats)
+          .map(ws => ({
+            weekId: ws.weekId,
+            weekNumber: ws.weekNumber,
+            matchesPlayed: ws.matchesPlayed,
+            top1: ws.top1,
+            top3: ws.top3,
+            totalPoints: ws.totalPoints,
+            avgPosition: ws.positions.length > 0
+              ? (ws.positions.reduce((a, b) => a + b, 0) / ws.positions.length).toFixed(1)
+              : '-',
+          }))
+          .sort((a, b) => b.weekNumber - a.weekNumber),
       }))
       .sort((a, b) => b.matchesPlayed - a.matchesPlayed);
 

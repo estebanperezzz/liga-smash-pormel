@@ -17,11 +17,18 @@ function PlayerSearchInput({ availablePlayers, allPlayers, selectedPlayerId, onS
 
   const selectedPlayer = allPlayers.find(p => p.id === selectedPlayerId);
 
-  const filtered = availablePlayers.filter(p =>
-    p.name.toLowerCase().includes(query.toLowerCase())
-  );
+  const filtered = availablePlayers.filter(p => {
+    const q = query.toLowerCase();
+    return (
+      p.name.toLowerCase().includes(q) ||
+      p.currentCharacter?.name.toLowerCase().includes(q)
+    );
+  });
 
-  const displayValue = selectedPlayer ? selectedPlayer.name : query;
+  const playerLabel = (p) =>
+    p.currentCharacter ? `${p.name} - ${p.currentCharacter.name}` : p.name;
+
+  const displayValue = selectedPlayer ? playerLabel(selectedPlayer) : query;
 
   const handleChange = (e) => {
     setQuery(e.target.value);
@@ -78,6 +85,9 @@ function PlayerSearchInput({ availablePlayers, allPlayers, selectedPlayerId, onS
                 }`}
               >
                 {player.name}
+                {player.currentCharacter && (
+                  <span className="text-muted-foreground"> — {player.currentCharacter.name}</span>
+                )}
               </button>
             </li>
           ))}

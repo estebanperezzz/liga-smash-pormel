@@ -60,6 +60,8 @@ export async function GET(request) {
             playerName: result.player.name,
             totalPoints: 0,
             matchesPlayed: 0,
+            top1: 0,
+            top3: 0,
             positions: [],
             character: playerCharacters[result.playerId]?.name || null,
             characterImage: playerCharacters[result.playerId]?.image || null,
@@ -70,6 +72,8 @@ export async function GET(request) {
         playerStats[result.playerId].totalPoints += result.points;
         playerStats[result.playerId].matchesPlayed += 1;
         playerStats[result.playerId].positions.push(result.position);
+        if (result.position === 1) playerStats[result.playerId].top1 += 1;
+        if (result.position <= 3) playerStats[result.playerId].top3 += 1;
       });
     });
 

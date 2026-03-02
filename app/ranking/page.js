@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trophy, User, RefreshCw, Lock } from 'lucide-react';
+import { Trophy, Medal, User, RefreshCw, Lock } from 'lucide-react';
 import PodiumCard from './components/PodiumCard';
 
 // Standard competition ranking: 1 + number of players with strictly more points
@@ -149,6 +149,8 @@ export default function RankingPage() {
                   <TableHead>Jugador</TableHead>
                   <TableHead className="w-[120px] pl-2">Personaje</TableHead>
                   <TableHead className="text-center w-[100px]">Partidas</TableHead>
+                  <TableHead className="text-center w-[80px]">Top 1</TableHead>
+                  <TableHead className="text-center w-[80px]">Top 3</TableHead>
                   <TableHead className="text-right w-[100px]">Puntos</TableHead>
                 </TableRow>
               </TableHeader>
@@ -213,6 +215,18 @@ export default function RankingPage() {
                     </TableCell>
 
                     <TableCell className="text-center">{player.matchesPlayed}</TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Trophy className="h-3.5 w-3.5 text-yellow-500" />
+                        <span className="font-bold text-yellow-500">{player.top1 ?? 0}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Medal className="h-3.5 w-3.5 text-orange-500" />
+                        <span className="font-bold text-orange-500">{player.top3 ?? 0}</span>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right font-bold text-lg">
                       {player.totalPoints}
                     </TableCell>
