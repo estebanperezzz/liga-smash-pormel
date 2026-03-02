@@ -6,7 +6,11 @@ import authConfig from './auth.config'
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
-  session: { strategy: 'jwt' },
+  session: {
+    strategy: 'jwt',
+    maxAge: 7 * 24 * 60 * 60,  // 7 días → auto-logout por inactividad
+    updateAge: 60 * 60,         // 1 hora → re-encripta el JWT (refresca playerId)
+  },
   callbacks: {
     ...authConfig.callbacks,
 
@@ -22,14 +26,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         token.role = role
+      }
 
-        // Incluir el playerId vinculado si existe
+      // Siempre refrescar el playerId desde la BD para reflejar vinculaciones
+      // hechas por el admin después del primer login del usuario
+      if (token.sub) {
         const player = await prisma.player.findUnique({
-          where: { userId: user.id },
+          where: { userId: token.sub },
           select: { id: true },
         })
         token.playerId = player?.id ?? null
       }
+
       return token
     },
   },
