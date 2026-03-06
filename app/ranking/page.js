@@ -7,8 +7,15 @@ import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trophy, Medal, User, RefreshCw, Lock } from 'lucide-react';
+import { Trophy, Medal, User, RefreshCw, Lock, EyeOff } from 'lucide-react';
 import PodiumCard from './components/PodiumCard';
+
+function isRankingBlocked() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Dom, 1=Lun, ..., 5=Vie, 6=Sab
+  const hour = now.getHours();
+  return day >= 1 && day <= 5 && hour === 13;
+}
 
 // Standard competition ranking: 1 + number of players with strictly more points
 function computeRanks(players) {
@@ -25,6 +32,10 @@ export default function RankingPage() {
   const [eligiblePlayers, setEligiblePlayers] = useState([]);
 
   useEffect(() => {
+    if (isRankingBlocked()) {
+      setLoading(false);
+      return;
+    }
     fetchRanking();
   }, []);
 
@@ -59,6 +70,33 @@ export default function RankingPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Cargando ranking...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isRankingBlocked()) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Ranking Semanal</h1>
+          <p className="text-muted-foreground">Clasificación actualizada en tiempo real</p>
+        </div>
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-6 text-center">
+          <div className="rounded-full bg-orange-500/10 p-6 border border-orange-500/20">
+            <EyeOff className="h-12 w-12 text-orange-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Ranking bloqueado</h2>
+            <p className="text-muted-foreground mt-2">
+              El ranking está oculto durante la jornada de Smash
+              <br />
+              <span className="text-orange-400 font-medium">13:00 – 14:00 hs</span>, lunes a viernes.
+            </p>
+            <p className="text-sm text-muted-foreground mt-3">
+              Volvé a las 14:00 para ver los resultados.
+            </p>
+          </div>
         </div>
       </div>
     );

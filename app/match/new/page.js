@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
+import { motion, AnimatePresence } from 'motion/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Gamepad2, Plus, Trash2, Save, Users, Search, X } from 'lucide-react';
+import { Gamepad2, Plus, Trash2, Save, Users, Search, X, CheckCircle2, AlertCircle } from 'lucide-react';
 
 // Combobox con búsqueda en tiempo real para seleccionar jugador
 function PlayerSearchInput({ availablePlayers, allPlayers, selectedPlayerId, onSelect }) {
@@ -112,6 +113,12 @@ export default function NewMatchPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [bulkCount, setBulkCount] = useState('');
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     fetchData();
@@ -202,10 +209,11 @@ export default function NewMatchPage() {
         weekId: weekInfo.id,
         results: selectedPlayers.map(p => ({ playerId: p.playerId, position: p.position }))
       });
-      alert('¡Partida registrada exitosamente!');
-      router.push('/ranking');
+      setSelectedPlayers([]);
+      setBulkCount('');
+      showToast('¡Resultados cargados correctamente!', 'success');
     } catch (error) {
-      alert(error.response?.data?.error || 'Error al registrar partida');
+      showToast(error.response?.data?.error || 'Error al registrar partida', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -247,22 +255,6 @@ export default function NewMatchPage() {
           Ingresa los resultados de la partida en orden de posición
         </p>
       </div>
-
-      {/* Instructions */}
-      <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Gamepad2 className="h-5 w-5" />
-            Instrucciones
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>1. Ingresa la cantidad de jugadores para cargar los slots de una sola vez</p>
-          <p>2. Escribí el nombre del jugador en cada slot para buscarlo y seleccionarlo</p>
-          <p>3. Podés reorganizar usando las flechas arriba/abajo</p>
-          <p>4. Los puntos se calcularán automáticamente según la cantidad de jugadores</p>
-        </CardContent>
-      </Card>
 
       {/* Bulk Add */}
       <Card>
@@ -408,6 +400,35 @@ export default function NewMatchPage() {
           </Button>
         </div>
       )}
+
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 60 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-xl border backdrop-blur-md text-sm font-medium text-foreground bg-background/95 ${
+              toast.type === 'success'
+                ? 'border-green-500/30'
+                : 'border-red-500/30'
+            }`}
+          >
+            {toast.type === 'success'
+              ? <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
+              : <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+            }
+            <span>{toast.message}</span>
+            <button
+              onClick={() => setToast(null)}
+              className="ml-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

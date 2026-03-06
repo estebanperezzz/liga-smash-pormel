@@ -100,24 +100,26 @@ export async function GET() {
       },
     });
 
-    // Si no existe, crearla automáticamente
+    // Si no existe por rango de fechas, buscar por número de semana.
+    // Puede ocurrir que la semana exista con fechas desfasadas por zona horaria
+    // (ej: semana creada en UTC y ahora ejecutando en Argentina UTC-3).
+    // En ese caso la reutilizamos y corregimos sus fechas en lugar de crear una nueva.
     if (!currentWeek) {
       const existingWeek = await prisma.week.findUnique({
         where: { weekNumber },
+        include: {
+          winner: true,
+          weeklyCharacters: {
+            include: { player: true, character: true },
+          },
+        },
       });
 
       if (existingWeek) {
-        const maxWeek = await prisma.week.findFirst({
-          orderBy: { weekNumber: 'desc' },
-        });
-        const newWeekNumber = maxWeek ? maxWeek.weekNumber + 1 : weekNumber;
-
-        currentWeek = await prisma.week.create({
-          data: {
-            weekNumber: newWeekNumber,
-            startDate: monday,
-            endDate: friday,
-          },
+        // Semana de esta semana encontrada por weekNumber: corregir fechas y reutilizar
+        currentWeek = await prisma.week.update({
+          where: { id: existingWeek.id },
+          data: { startDate: monday, endDate: friday },
           include: {
             winner: true,
             weeklyCharacters: {
