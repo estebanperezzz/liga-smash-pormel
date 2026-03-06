@@ -48,6 +48,7 @@ export default async function RootLayout({ children }) {
                   { href: '/characters', label: 'Personajes' },
                   { href: '/players', label: 'Jugadores' },
                   { href: '/history', label: 'Historial' },
+                  { href: '/equipos', label: 'Equipos' },
                 ].map((item) => (
                   <Link
                     key={item.href}

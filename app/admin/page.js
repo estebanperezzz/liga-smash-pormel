@@ -2,7 +2,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import prisma from '@/lib/prisma'
-import { linkPlayerToUser, unlinkPlayer, setUserRole } from './actions'
+import { linkPlayerToUser, unlinkPlayer, setUserRole, setTeamWeek } from './actions'
 
 export const metadata = { title: 'Admin — Liga Smash Pormel' }
 
@@ -10,7 +10,8 @@ export default async function AdminPage() {
   const session = await auth()
   if (session?.user?.role !== 'admin') redirect('/')
 
-  const [users, availablePlayers] = await Promise.all([
+  const now = new Date()
+  const [users, availablePlayers, currentWeek] = await Promise.all([
     prisma.user.findMany({
       include: { player: { select: { id: true, name: true } } },
       orderBy: { name: 'asc' },
@@ -18,6 +19,10 @@ export default async function AdminPage() {
     prisma.player.findMany({
       where: { userId: null },
       orderBy: { name: 'asc' },
+    }),
+    prisma.week.findFirst({
+      where: { startDate: { lte: now }, endDate: { gte: now } },
+      orderBy: { startDate: 'desc' },
     }),
   ])
 
@@ -130,6 +135,53 @@ export default async function AdminPage() {
             <div className="px-6 py-12 text-center text-muted-foreground text-sm">
               Ningún usuario se ha registrado todavía.
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* Semana de Equipos */}
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/10">
+          <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+            Semana de Equipos
+          </h2>
+        </div>
+        <div className="px-6 py-4">
+          {currentWeek ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium text-sm">Semana {currentWeek.weekNumber}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {new Date(currentWeek.startDate).toLocaleDateString('es-AR')} —{' '}
+                  {new Date(currentWeek.endDate).toLocaleDateString('es-AR')}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
+                  currentWeek.isTeamWeek
+                    ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+                    : 'bg-white/5 text-muted-foreground border-white/10'
+                }`}>
+                  {currentWeek.isTeamWeek ? 'Semana de equipos activa' : 'Semana individual'}
+                </span>
+                <form action={setTeamWeek}>
+                  <input type="hidden" name="weekId" value={currentWeek.id} />
+                  <input type="hidden" name="isTeamWeek" value={String(!currentWeek.isTeamWeek)} />
+                  <button
+                    type="submit"
+                    className={`text-xs px-3 py-1 rounded border transition-colors ${
+                      currentWeek.isTeamWeek
+                        ? 'border-red-500/30 text-red-400 hover:bg-red-500/10'
+                        : 'border-orange-500/30 text-orange-400 hover:bg-orange-500/10'
+                    }`}
+                  >
+                    {currentWeek.isTeamWeek ? 'Desactivar equipos' : 'Activar equipos'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No hay semana activa en este momento.</p>
           )}
         </div>
       </div>

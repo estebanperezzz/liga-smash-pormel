@@ -83,6 +83,7 @@ model Player {
   matchResults      MatchResult[]
   weeklyWins        Week[]
   characterChanges  CharacterChange[]
+  teamMemberships   TeamMember[]
 }
 
 // Modelo de Semanas
@@ -92,14 +93,19 @@ model Week {
   startDate         DateTime
   endDate           DateTime
   winnerId          Int?
+  winnerTeamId      Int?
+  isTeamWeek        Boolean            @default(false)
   championImage     String?
   createdAt         DateTime           @default(now())
-  
+
   // Relaciones
   winner            Player?            @relation(fields: [winnerId], references: [id])
+  winnerTeam        Team?              @relation("WeekWinnerTeam", fields: [winnerTeamId], references: [id])
   weeklyCharacters  WeeklyCharacter[]
   matches           Match[]
   characterChanges  CharacterChange[]
+  teams             Team[]
+  teamMembers       TeamMember[]
 }
 
 // Modelo de Selección de Personaje Semanal
@@ -151,6 +157,7 @@ model Match {
   // Relaciones
   week              Week               @relation(fields: [weekId], references: [id])
   results           MatchResult[]
+  teamResults       TeamMatchResult[]
 }
 
 // Modelo de Resultados de Partida (Jugador + Posición)
@@ -168,5 +175,55 @@ model MatchResult {
   // Constraint: Un jugador solo puede tener una posición por partida
   @@unique([matchId, playerId])
   // Constraint: Una posición solo puede ser ocupada por un jugador por partida
+  @@unique([matchId, position])
+}
+
+// ── Modelos de Semana de Equipos ──────────────────────────────────────────────
+
+// Modelo de Equipos (solo existen dentro de una semana de equipos)
+model Team {
+  id           Int              @id @default(autoincrement())
+  name         String
+  weekId       Int
+  createdAt    DateTime         @default(now())
+
+  // Relaciones
+  week         Week             @relation(fields: [weekId], references: [id])
+  members      TeamMember[]
+  matchResults TeamMatchResult[]
+  wonWeeks     Week[]           @relation("WeekWinnerTeam")
+}
+
+// Modelo de Miembros de Equipo (un jugador pertenece a un solo equipo por semana)
+model TeamMember {
+  id        Int    @id @default(autoincrement())
+  teamId    Int
+  playerId  Int
+  weekId    Int
+
+  // Relaciones
+  team      Team   @relation(fields: [teamId], references: [id])
+  player    Player @relation(fields: [playerId], references: [id])
+  week      Week   @relation(fields: [weekId], references: [id])
+
+  // Un jugador solo puede estar en un equipo por semana
+  @@unique([playerId, weekId])
+}
+
+// Modelo de Resultados de Partida por Equipo
+model TeamMatchResult {
+  id        Int   @id @default(autoincrement())
+  matchId   Int
+  teamId    Int
+  position  Int
+  points    Int
+
+  // Relaciones
+  match     Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  team      Team  @relation(fields: [teamId], references: [id])
+
+  // Un equipo solo puede tener un resultado por partida
+  @@unique([matchId, teamId])
+  // Una posición solo puede ser ocupada por un equipo por partida
   @@unique([matchId, position])
 }

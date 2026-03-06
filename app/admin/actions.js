@@ -55,3 +55,18 @@ export async function setUserRole(formData) {
 
   revalidatePath('/admin')
 }
+
+export async function setTeamWeek(formData) {
+  await requireAdmin()
+  const weekId = Number.parseInt(formData.get('weekId'))
+  const isTeamWeek = formData.get('isTeamWeek') === 'true'
+  if (!weekId) return
+
+  await prisma.week.update({
+    where: { id: weekId },
+    data: { isTeamWeek },
+  })
+
+  revalidatePath('/admin')
+  revalidatePath('/equipos')
+}
