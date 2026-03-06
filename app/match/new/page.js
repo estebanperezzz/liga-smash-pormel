@@ -18,13 +18,20 @@ function PlayerSearchInput({ availablePlayers, allPlayers, selectedPlayerId, onS
 
   const selectedPlayer = allPlayers.find(p => p.id === selectedPlayerId);
 
-  const filtered = availablePlayers.filter(p => {
-    const q = query.toLowerCase();
-    return (
-      p.name.toLowerCase().includes(q) ||
-      p.currentCharacter?.name.toLowerCase().includes(q)
-    );
-  });
+  const filtered = availablePlayers
+    .filter(p => {
+      const q = query.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(q) ||
+        p.currentCharacter?.name.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      // Jugadores con personaje asignado primero
+      if (a.currentCharacter && !b.currentCharacter) return -1;
+      if (!a.currentCharacter && b.currentCharacter) return 1;
+      return 0;
+    });
 
   const playerLabel = (p) =>
     p.currentCharacter ? `${p.name} - ${p.currentCharacter.name}` : p.name;
@@ -76,19 +83,35 @@ function PlayerSearchInput({ availablePlayers, allPlayers, selectedPlayerId, onS
 
       {/* Dropdown */}
       {open && filtered.length > 0 && (
-        <ul className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+        <ul className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg max-h-64 overflow-y-auto">
           {filtered.map(player => (
             <li key={player.id}>
               <button
                 onMouseDown={() => handleSelect(player)}
-                className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
+                className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground flex items-center gap-2.5 ${
                   player.id === selectedPlayerId ? 'bg-accent font-semibold' : ''
                 }`}
               >
-                {player.name}
-                {player.currentCharacter && (
-                  <span className="text-muted-foreground"> — {player.currentCharacter.name}</span>
-                )}
+                {/* Imagen del personaje */}
+                <div className="h-8 w-8 flex-shrink-0 flex items-center justify-center">
+                  {player.currentCharacter?.image ? (
+                    <img
+                      src={player.currentCharacter.image}
+                      alt={player.currentCharacter.name}
+                      className="h-8 w-8 object-contain"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded bg-muted" />
+                  )}
+                </div>
+
+                {/* Nombre + personaje */}
+                <span className="flex-1 truncate">
+                  {player.name}
+                  {player.currentCharacter && (
+                    <span className="text-muted-foreground"> — {player.currentCharacter.name}</span>
+                  )}
+                </span>
               </button>
             </li>
           ))}
