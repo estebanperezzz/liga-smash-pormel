@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import axios from 'axios'
-import { Users, Plus, Trash2, Shield } from 'lucide-react'
+import Image from 'next/image'
+import { Users, Plus, Trash2, Shield, Camera, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
@@ -15,6 +16,7 @@ export default function EquiposPage() {
   const [teams, setTeams] = useState([])
   const [players, setPlayers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [uploadingTeamId, setUploadingTeamId] = useState(null)
 
   // Estado del formulario de nuevo equipo
   const [showForm, setShowForm] = useState(false)
@@ -44,6 +46,37 @@ export default function EquiposPage() {
       console.error('Error fetching data:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Verifica si el usuario actual es miembro de un equipo dado
+  function isMemberOf(team) {
+    if (!session?.user) return false
+    return team.members.some((m) => m.player?.userId === session.user.id)
+  }
+
+  async function handleImageUpload(teamId, file) {
+    if (!file) return
+    setUploadingTeamId(teamId)
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      await axios.patch(`/api/teams/${teamId}/image`, fd)
+      await fetchData()
+    } catch (err) {
+      console.error('Error uploading image:', err)
+    } finally {
+      setUploadingTeamId(null)
+    }
+  }
+
+  async function handleImageDelete(teamId) {
+    if (!confirm('¿Eliminar la imagen del equipo?')) return
+    try {
+      await axios.delete(`/api/teams/${teamId}/image`)
+      await fetchData()
+    } catch (err) {
+      console.error('Error deleting image:', err)
     }
   }
 
@@ -230,36 +263,89 @@ export default function EquiposPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {teams.map((team) => (
-            <Card key={team.id} className="relative">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-lg">{team.name}</CardTitle>
-                  {isAdmin && (
-                    <button
-                      onClick={() => handleDeleteTeam(team.id)}
-                      className="shrink-0 p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                      title="Eliminar equipo"
+          {teams.map((team) => {
+            const canEdit = isAdmin || isMemberOf(team)
+            const isUploading = uploadingTeamId === team.id
+            return (
+              <Card key={team.id} className="relative overflow-hidden">
+                {/* Imagen del equipo */}
+                <div className="relative aspect-square w-full bg-white/5 border-b border-white/10">
+                  {team.image ? (
+                    <>
+                      <Image
+                        src={team.image}
+                        alt={team.name}
+                        fill
+                        className="object-cover"
+                      />
+                      {canEdit && (
+                        <button
+                          onClick={() => handleImageDelete(team.id)}
+                          className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white hover:bg-red-500/80 transition-colors"
+                          title="Eliminar imagen"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <div className="h-full flex items-center justify-center">
+                      <Users className="h-10 w-10 text-white/10" />
+                    </div>
+                  )}
+
+                  {/* Botón subir imagen */}
+                  {canEdit && (
+                    <label
+                      className={`absolute bottom-2 right-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
+                        isUploading
+                          ? 'bg-black/50 text-white/50 cursor-not-allowed'
+                          : 'bg-black/50 text-white hover:bg-orange-500/80'
+                      }`}
+                      title="Subir imagen del equipo"
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                      <Camera className="h-3.5 w-3.5" />
+                      {isUploading ? 'Subiendo...' : team.image ? 'Cambiar' : 'Subir foto'}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        className="hidden"
+                        disabled={isUploading}
+                        onChange={(e) => handleImageUpload(team.id, e.target.files?.[0])}
+                      />
+                    </label>
                   )}
                 </div>
-                <CardDescription>
-                  {team.members.length} miembro{team.members.length !== 1 ? 's' : ''}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {team.members.map((m) => (
-                    <Badge key={m.player.id} variant="secondary">
-                      {m.player.name}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-lg">{team.name}</CardTitle>
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleDeleteTeam(team.id)}
+                        className="shrink-0 p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        title="Eliminar equipo"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  <CardDescription>
+                    {team.members.length} miembro{team.members.length !== 1 ? 's' : ''}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {team.members.map((m) => (
+                      <Badge key={m.player.id} variant="secondary">
+                        {m.player.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
 

@@ -17,7 +17,7 @@ export async function GET(request) {
       include: {
         members: {
           include: {
-            player: { select: { id: true, name: true } },
+            player: { select: { id: true, name: true, userId: true } },
           },
         },
       },
@@ -73,7 +73,7 @@ export async function POST(request) {
       include: {
         members: {
           include: {
-            player: { select: { id: true, name: true } },
+            player: { select: { id: true, name: true, userId: true } },
           },
         },
       },

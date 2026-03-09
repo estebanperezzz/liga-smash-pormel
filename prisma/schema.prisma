@@ -184,6 +184,7 @@ model MatchResult {
 model Team {
   id           Int              @id @default(autoincrement())
   name         String
+  image        String?
   weekId       Int
   createdAt    DateTime         @default(now())
 
