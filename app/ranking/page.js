@@ -160,52 +160,59 @@ export default function RankingPage() {
               {/* Podium de equipos (top 3) */}
               {ranking.length >= 2 && (
                 <div className="flex items-end gap-3">
-                  {/* 2° equipo */}
-                  {ranking[1] && (
-                    <div className="flex-1 flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-4 pb-0 min-h-[140px] justify-end">
-                      <span className="text-2xl">🥈</span>
-                      <p className="font-bold text-center text-sm">{ranking[1].teamName}</p>
-                      <div className="flex flex-wrap gap-1 justify-center mb-2">
-                        {ranking[1].members.map((m) => (
-                          <span key={m.id} className="text-xs px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-muted-foreground">{m.name}</span>
-                        ))}
+                  {[ranking[1], ranking[0], ranking[2]].map((team, idx) => {
+                    if (!team) return <div key={idx} className="flex-1" />;
+                    const isFirst = idx === 1;
+                    const medal = ['🥈', '🥇', '🥉'][idx];
+                    const minH = ['min-h-[150px]', 'min-h-[190px]', 'min-h-[120px]'][idx];
+                    return (
+                      <div
+                        key={team.teamId}
+                        className={`flex-1 relative flex flex-col items-center gap-2 rounded-xl border overflow-hidden pb-0 ${minH} justify-end
+                          ${isFirst ? 'border-orange-500/40' : 'border-white/10'}`}
+                      >
+                        {/* Imagen de fondo del equipo */}
+                        {team.teamImage && (
+                          <>
+                            <Image src={team.teamImage} alt={team.teamName} fill className="object-cover object-center" />
+                            <div className={`absolute inset-0 ${isFirst ? 'bg-orange-950/70' : 'bg-black/70'}`} />
+                          </>
+                        )}
+                        {!team.teamImage && (
+                          <div className={`absolute inset-0 ${isFirst ? 'bg-orange-500/5' : 'bg-white/[0.03]'}`} />
+                        )}
+
+                        {/* Contenido */}
+                        <div className="relative z-10 flex flex-col items-center gap-1.5 w-full px-3 pt-3">
+                          <span className={isFirst ? 'text-3xl' : 'text-2xl'}>{medal}</span>
+                          <p className={`font-bold text-center ${isFirst ? 'text-base' : 'text-sm'}`}>{team.teamName}</p>
+                          {/* Fotos de personaje de los miembros */}
+                          <div className="flex gap-1.5 justify-center flex-wrap mb-1">
+                            {team.members.map((m) => (
+                              <div key={m.id} className="flex flex-col items-center gap-0.5">
+                                <div className={`relative rounded-lg overflow-hidden border border-white/20 bg-black/40 ${isFirst ? 'h-10 w-10' : 'h-8 w-8'}`}>
+                                  {m.characterImage ? (
+                                    <Image src={m.characterImage} alt={m.characterName || m.name} fill className="object-contain p-0.5" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <User className="h-4 w-4 text-white/40" />
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-white/70 leading-none">{m.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Barra de puntos */}
+                        <div className={`relative z-10 w-full rounded-t-lg py-2 text-center ${isFirst ? 'bg-orange-500/30' : 'bg-white/10'}`}>
+                          <span className={`font-bold ${isFirst ? 'text-xl text-orange-300' : 'text-lg'}`}>{team.totalPoints}</span>
+                          <span className="text-xs text-muted-foreground ml-1">pts</span>
+                        </div>
                       </div>
-                      <div className="w-full bg-white/10 rounded-t-lg py-2 text-center">
-                        <span className="font-bold text-lg">{ranking[1].totalPoints}</span>
-                        <span className="text-xs text-muted-foreground ml-1">pts</span>
-                      </div>
-                    </div>
-                  )}
-                  {/* 1° equipo */}
-                  <div className="flex-1 flex flex-col items-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/5 p-4 pb-0 min-h-[180px] justify-end">
-                    <span className="text-3xl">🥇</span>
-                    <p className="font-bold text-center">{ranking[0].teamName}</p>
-                    <div className="flex flex-wrap gap-1 justify-center mb-2">
-                      {ranking[0].members.map((m) => (
-                        <span key={m.id} className="text-xs px-1.5 py-0.5 rounded bg-orange-500/10 border border-orange-500/20 text-orange-300">{m.name}</span>
-                      ))}
-                    </div>
-                    <div className="w-full bg-orange-500/20 rounded-t-lg py-2 text-center">
-                      <span className="font-bold text-xl text-orange-400">{ranking[0].totalPoints}</span>
-                      <span className="text-xs text-muted-foreground ml-1">pts</span>
-                    </div>
-                  </div>
-                  {/* 3° equipo */}
-                  {ranking[2] && (
-                    <div className="flex-1 flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-4 pb-0 min-h-[120px] justify-end">
-                      <span className="text-xl">🥉</span>
-                      <p className="font-bold text-center text-sm">{ranking[2].teamName}</p>
-                      <div className="flex flex-wrap gap-1 justify-center mb-2">
-                        {ranking[2].members.map((m) => (
-                          <span key={m.id} className="text-xs px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-muted-foreground">{m.name}</span>
-                        ))}
-                      </div>
-                      <div className="w-full bg-white/10 rounded-t-lg py-2 text-center">
-                        <span className="font-bold text-lg">{ranking[2].totalPoints}</span>
-                        <span className="text-xs text-muted-foreground ml-1">pts</span>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               )}
 
@@ -219,11 +226,12 @@ export default function RankingPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[80px]">Pos.</TableHead>
+                        <TableHead className="w-[60px]">Pos.</TableHead>
                         <TableHead>Equipo</TableHead>
-                        <TableHead className="text-center w-[100px]">Partidas</TableHead>
+                        <TableHead className="w-[120px]">Personajes</TableHead>
+                        <TableHead className="text-center w-[90px]">Partidas</TableHead>
                         <TableHead className="text-center w-[80px]">Victorias</TableHead>
-                        <TableHead className="text-right w-[100px]">Puntos</TableHead>
+                        <TableHead className="text-right w-[90px]">Puntos</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -237,6 +245,21 @@ export default function RankingPage() {
                             <div className="flex flex-wrap gap-1 mt-1">
                               {team.members.map((m) => (
                                 <span key={m.id} className="text-xs px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-muted-foreground">{m.name}</span>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1.5">
+                              {team.members.map((m) => (
+                                <div key={m.id} className="relative h-10 w-10 rounded-md overflow-hidden bg-gradient-to-br from-muted to-background border border-white/10 flex-shrink-0" title={`${m.name}${m.characterName ? ` — ${m.characterName}` : ''}`}>
+                                  {m.characterImage ? (
+                                    <Image src={m.characterImage} alt={m.characterName || m.name} fill className="object-contain p-0.5" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <User className="h-5 w-5 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                </div>
                               ))}
                             </div>
                           </TableCell>

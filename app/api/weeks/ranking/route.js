@@ -23,19 +23,31 @@ export async function GET(request) {
 
     // ── SEMANA DE EQUIPOS ─────────────────────────────────────────────────────
     if (week.isTeamWeek) {
-      const matches = await prisma.match.findMany({
-        where: { weekId },
-        include: {
-          teamResults: {
-            include: {
-              team: {
-                include: {
-                  members: { include: { player: { select: { id: true, name: true } } } },
+      const [matches, weeklyCharacters] = await Promise.all([
+        prisma.match.findMany({
+          where: { weekId },
+          include: {
+            teamResults: {
+              include: {
+                team: {
+                  include: {
+                    members: { include: { player: { select: { id: true, name: true } } } },
+                  },
                 },
               },
             },
           },
-        },
+        }),
+        prisma.weeklyCharacter.findMany({
+          where: { weekId },
+          include: { character: { select: { id: true, name: true, image: true } } },
+        }),
+      ]);
+
+      // Mapa playerId → character
+      const playerCharMap = {};
+      weeklyCharacters.forEach((wc) => {
+        playerCharMap[wc.playerId] = { name: wc.character.name, image: wc.character.image };
       });
 
       const teamStats = {};
@@ -46,10 +58,16 @@ export async function GET(request) {
             teamStats[result.teamId] = {
               teamId: result.teamId,
               teamName: result.team.name,
+              teamImage: result.team.image || null,
               totalPoints: 0,
               matchesPlayed: 0,
               wins: 0,
-              members: result.team.members.map((m) => ({ id: m.player.id, name: m.player.name })),
+              members: result.team.members.map((m) => ({
+                id: m.player.id,
+                name: m.player.name,
+                characterName: playerCharMap[m.player.id]?.name || null,
+                characterImage: playerCharMap[m.player.id]?.image || null,
+              })),
             };
           }
           teamStats[result.teamId].totalPoints += result.points;
