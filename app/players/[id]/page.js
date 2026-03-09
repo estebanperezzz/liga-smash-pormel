@@ -322,76 +322,68 @@ export default function PlayerStatsPage() {
                       </div>
                     </div>
 
-                    {/* Expanded — portada + info */}
+                    {/* Expanded */}
                     {isOpen && (
-                      <div className="border-t">
-                        {/* Portada */}
-                        <div className="relative w-full h-64 bg-gradient-to-br from-muted/60 to-background overflow-hidden">
-                          {team.teamImage ? (
-                            <>
-                              <Image
-                                src={team.teamImage}
-                                alt={team.teamName}
-                                fill
-                                className="object-cover object-center"
-                              />
-                              {/* Gradient overlay for readability */}
-                              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-                            </>
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Users className="h-20 w-20 text-muted-foreground/30" />
-                            </div>
-                          )}
-
-                          {/* Name overlay */}
-                          <div className="absolute bottom-0 left-0 right-0 p-4 flex items-end gap-3">
-                            <div>
-                              <p className="text-2xl font-bold text-white drop-shadow">{team.teamName}</p>
-                              <p className="text-sm text-white/70">Semana {team.weekNumber}</p>
-                            </div>
-                            {team.isChampion && (
-                              <Trophy className="h-7 w-7 text-yellow-400 fill-yellow-400 drop-shadow mb-1 flex-shrink-0" />
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Stats row */}
-                        <div className="grid grid-cols-4 divide-x border-b">
-                          {[
-                            { label: 'Partidas', value: team.totalMatches, color: '' },
-                            { label: 'Top 1', value: team.top1, color: 'text-yellow-500' },
-                            { label: 'Top 3', value: team.top3, color: 'text-orange-500' },
-                            { label: 'Puntos', value: team.totalPoints, color: 'text-primary' },
-                          ].map(({ label, value, color }) => (
-                            <div key={label} className="py-3 text-center">
-                              <p className={`text-xl font-bold ${color}`}>{value}</p>
-                              <p className="text-xs text-muted-foreground">{label}</p>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Members + link */}
-                        <div className="p-4 flex items-center justify-between gap-4 flex-wrap">
-                          <div className="flex flex-wrap gap-2">
-                            {team.members.map((m) => (
-                              <Badge
-                                key={m.id}
-                                variant={m.id === Number(id) ? 'default' : 'outline'}
-                                className="text-sm cursor-pointer hover:bg-primary/20 px-3 py-1"
-                                onClick={(e) => { e.stopPropagation(); router.push(`/players/${m.id}`); }}
-                              >
-                                {m.name}
-                              </Badge>
+                      <div className="border-t flex items-stretch">
+                        {/* Left — stats + members */}
+                        <div className="flex-1 p-5 flex flex-col justify-between gap-4">
+                          {/* Stats row */}
+                          <div className="grid grid-cols-4 gap-2">
+                            {[
+                              { label: 'Partidas', value: team.totalMatches, color: '' },
+                              { label: 'Top 1', value: team.top1, color: 'text-yellow-500' },
+                              { label: 'Top 3', value: team.top3, color: 'text-orange-500' },
+                              { label: 'Puntos', value: team.totalPoints, color: 'text-primary' },
+                            ].map(({ label, value, color }) => (
+                              <div key={label} className="text-center">
+                                <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                                <p className="text-xs text-muted-foreground">{label}</p>
+                              </div>
                             ))}
                           </div>
+
+                          {/* Members */}
+                          <div className="space-y-1.5">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Integrantes</p>
+                            <div className="flex flex-wrap gap-2">
+                              {team.members.map((m) => (
+                                <Badge
+                                  key={m.id}
+                                  variant={m.id === Number(id) ? 'default' : 'outline'}
+                                  className="text-sm cursor-pointer hover:bg-primary/20 px-3 py-1"
+                                  onClick={(e) => { e.stopPropagation(); router.push(`/players/${m.id}`); }}
+                                >
+                                  {m.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Link */}
                           <Button
                             variant="outline"
                             size="sm"
+                            className="self-start"
                             onClick={(e) => { e.stopPropagation(); router.push(`/week/${team.weekId}`); }}
                           >
                             Ver semana {team.weekNumber} →
                           </Button>
+                        </div>
+
+                        {/* Right — image */}
+                        <div className="relative w-44 flex-shrink-0 bg-gradient-to-br from-muted to-background">
+                          {team.teamImage ? (
+                            <Image
+                              src={team.teamImage}
+                              alt={team.teamName}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Users className="h-14 w-14 text-muted-foreground/30" />
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
