@@ -147,7 +147,8 @@ export default function NewMatchPage() {
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
 
   // Estado modo equipos
-  const [orderedTeams, setOrderedTeams] = useState([]); // [{ teamId, teamName, members[], position }]
+  const [allTeams, setAllTeams] = useState([]);          // todos los equipos de la semana
+  const [orderedTeams, setOrderedTeams] = useState([]); // equipos seleccionados para esta partida, con posición
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -169,12 +170,11 @@ export default function NewMatchPage() {
 
       if (weekRes.data?.isTeamWeek && weekRes.data?.id) {
         const teamsRes = await axios.get(`/api/teams?weekId=${weekRes.data.id}`);
-        setOrderedTeams(
-          teamsRes.data.map((t, i) => ({
+        setAllTeams(
+          teamsRes.data.map((t) => ({
             teamId: t.id,
             teamName: t.name,
             members: t.members.map((m) => m.player.name),
-            position: i + 1,
           }))
         );
       }
@@ -267,6 +267,21 @@ export default function NewMatchPage() {
 
   // ── Handlers modo equipos ─────────────────────────────────────────────────
 
+  const MAX_PLAYERS_PER_MATCH = 8;
+
+  const toggleTeam = (team) => {
+    const isSelected = orderedTeams.some((t) => t.teamId === team.teamId);
+    if (isSelected) {
+      setOrderedTeams((prev) =>
+        prev.filter((t) => t.teamId !== team.teamId).map((t, i) => ({ ...t, position: i + 1 }))
+      );
+    } else {
+      const currentPlayers = orderedTeams.reduce((sum, t) => sum + t.members.length, 0);
+      if (currentPlayers + team.members.length > MAX_PLAYERS_PER_MATCH) return;
+      setOrderedTeams((prev) => [...prev, { ...team, position: prev.length + 1 }]);
+    }
+  };
+
   const moveTeamUp = (index) => {
     if (index === 0) return;
     const next = [...orderedTeams];
@@ -296,8 +311,7 @@ export default function NewMatchPage() {
         weekId: weekInfo.id,
         teamResults: orderedTeams.map((t) => ({ teamId: t.teamId, position: t.position })),
       });
-      // Resetear al orden original
-      setOrderedTeams((prev) => prev.map((t, i) => ({ ...t, position: i + 1 })));
+      setOrderedTeams([]);
       showToast('¡Partida de equipos registrada!', 'success');
     } catch (error) {
       showToast(error.response?.data?.error || 'Error al registrar partida', 'error');
@@ -345,7 +359,7 @@ export default function NewMatchPage() {
           <p className="text-muted-foreground">Semana de equipos — ordená de 1° a último</p>
         </div>
 
-        {orderedTeams.length === 0 ? (
+        {allTeams.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
@@ -361,75 +375,120 @@ export default function NewMatchPage() {
           </Card>
         ) : (
           <>
+            {/* Selección de equipos */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Orden de equipos
+                  Seleccionar equipos
                 </CardTitle>
                 <CardDescription>
-                  Usá las flechas para ordenar los equipos de mejor a peor posición
+                  Elegí los equipos que jugaron esta partida (máx. {MAX_PLAYERS_PER_MATCH} jugadores en total ·{' '}
+                  {orderedTeams.reduce((s, t) => s + t.members.length, 0)}/{MAX_PLAYERS_PER_MATCH} seleccionados)
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {orderedTeams.map((team, index) => (
-                  <div key={team.teamId} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                    {/* Flechas */}
-                    <div className="flex flex-col gap-1">
-                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveTeamUp(index)} disabled={index === 0}>↑</Button>
-                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveTeamDown(index)} disabled={index === orderedTeams.length - 1}>↓</Button>
-                    </div>
-
-                    {/* Posición */}
-                    <Badge variant="outline" className="text-lg px-3 py-1 w-12 justify-center shrink-0">
-                      {getPositionIcon(team.position)}
-                    </Badge>
-
-                    {/* Nombre del equipo + miembros */}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">{team.teamName}</p>
-                      <p className="text-xs text-muted-foreground truncate">{team.members.join(', ')}</p>
-                    </div>
-
-                    {/* Puntos preview */}
-                    <Badge variant="secondary" className="w-16 justify-center shrink-0">
-                      {orderedTeams.length - index + 1} pts
-                    </Badge>
-                  </div>
-                ))}
+              <CardContent className="space-y-2">
+                {allTeams.map((team) => {
+                  const isSelected = orderedTeams.some((t) => t.teamId === team.teamId);
+                  const currentPlayers = orderedTeams.reduce((s, t) => s + t.members.length, 0);
+                  const wouldExceed = !isSelected && currentPlayers + team.members.length > MAX_PLAYERS_PER_MATCH;
+                  return (
+                    <button
+                      key={team.teamId}
+                      type="button"
+                      onClick={() => !wouldExceed && toggleTeam(team)}
+                      disabled={wouldExceed}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 text-left transition-colors ${
+                        isSelected
+                          ? 'border-primary bg-primary/10'
+                          : wouldExceed
+                          ? 'border-border bg-muted/30 opacity-40 cursor-not-allowed'
+                          : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                      }`}
+                    >
+                      <div className={`h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground'}`}>
+                        {isSelected && <span className="text-primary-foreground text-xs font-bold">✓</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm">{team.teamName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{team.members.join(', ')}</p>
+                      </div>
+                      <Badge variant="outline" className="shrink-0 text-xs">
+                        {team.members.length} {team.members.length === 1 ? 'jugador' : 'jugadores'}
+                      </Badge>
+                    </button>
+                  );
+                })}
               </CardContent>
             </Card>
 
-            {/* Resumen */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Resumen</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {orderedTeams.map((team, index) => (
-                    <div key={team.teamId} className="flex justify-between items-center">
-                      <span className="text-sm">
-                        {getPositionIcon(team.position)} {team.teamName}
-                        <span className="text-muted-foreground text-xs ml-2">({team.members.join(', ')})</span>
-                      </span>
-                      <Badge>{orderedTeams.length - index + 1} puntos</Badge>
+            {/* Ordenamiento — solo cuando hay ≥2 equipos seleccionados */}
+            {orderedTeams.length >= 2 && (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Orden de equipos
+                    </CardTitle>
+                    <CardDescription>
+                      Usá las flechas para ordenar los equipos de mejor a peor posición
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {orderedTeams.map((team, index) => (
+                      <div key={team.teamId} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                        <div className="flex flex-col gap-1">
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveTeamUp(index)} disabled={index === 0}>↑</Button>
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveTeamDown(index)} disabled={index === orderedTeams.length - 1}>↓</Button>
+                        </div>
+                        <Badge variant="outline" className="text-lg px-3 py-1 w-12 justify-center shrink-0">
+                          {getPositionIcon(team.position)}
+                        </Badge>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm">{team.teamName}</p>
+                          <p className="text-xs text-muted-foreground truncate">{team.members.join(', ')}</p>
+                        </div>
+                        <Badge variant="secondary" className="w-16 justify-center shrink-0">
+                          {orderedTeams.length - index + 1} pts
+                        </Badge>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                {/* Resumen */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Resumen</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {orderedTeams.map((team, index) => (
+                        <div key={team.teamId} className="flex justify-between items-center">
+                          <span className="text-sm">
+                            {getPositionIcon(team.position)} {team.teamName}
+                            <span className="text-muted-foreground text-xs ml-2">({team.members.join(', ')})</span>
+                          </span>
+                          <Badge>{orderedTeams.length - index + 1} puntos</Badge>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </CardContent>
+                </Card>
+
+                {/* Submit */}
+                <div className="flex gap-3">
+                  <Button className="flex-1" size="lg" onClick={handleTeamSubmit} disabled={submitting}>
+                    <Save className="h-4 w-4 mr-2" />
+                    {submitting ? 'Guardando...' : 'Guardar Partida'}
+                  </Button>
+                  <Button variant="outline" size="lg" onClick={() => router.push('/ranking')}>
+                    Cancelar
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Submit */}
-            <div className="flex gap-3">
-              <Button className="flex-1" size="lg" onClick={handleTeamSubmit} disabled={submitting}>
-                <Save className="h-4 w-4 mr-2" />
-                {submitting ? 'Guardando...' : 'Guardar Partida'}
-              </Button>
-              <Button variant="outline" size="lg" onClick={() => router.push('/ranking')}>
-                Cancelar
-              </Button>
-            </div>
+              </>
+            )}
           </>
         )}
 

@@ -141,13 +141,17 @@ export async function GET(request, { params }) {
       return { ...result, character: weekInfo.currentCharacter };
     });
 
-    // Stats generales
-    const totalMatches = resultsWithCharacters.length;
-    const top1 = resultsWithCharacters.filter(r => r.position === 1).length;
-    const top3 = resultsWithCharacters.filter(r => r.position <= 3).length;
-    const totalPoints = resultsWithCharacters.reduce((acc, r) => acc + r.points, 0);
+    // Resultados de partidas de equipos (aplanados por cada partida del equipo)
+    const teamMatchResults = teamMemberships.flatMap((tm) => tm.team.matchResults);
+
+    // Stats generales (individuales + equipos)
+    const allResults = [...resultsWithCharacters, ...teamMatchResults];
+    const totalMatches = allResults.length;
+    const top1 = allResults.filter(r => r.position === 1).length;
+    const top3 = allResults.filter(r => r.position <= 3).length;
+    const totalPoints = allResults.reduce((acc, r) => acc + r.points, 0);
     const avgPosition = totalMatches > 0
-      ? (resultsWithCharacters.reduce((acc, r) => acc + r.position, 0) / totalMatches).toFixed(1)
+      ? (allResults.reduce((acc, r) => acc + r.position, 0) / totalMatches).toFixed(1)
       : 0;
 
     // Stats por personaje
