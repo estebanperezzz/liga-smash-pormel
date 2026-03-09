@@ -88,7 +88,7 @@ export default function Home() {
         const rankingRes = await fetch(`/api/weeks/ranking?weekId=${week.id}`)
         const ranking = await rankingRes.json()
 
-        setRankingData({ week, ranking: ranking.ranking ?? [], totalMatches: ranking.totalMatches ?? 0 })
+        setRankingData({ week, ranking: ranking.ranking ?? [], totalMatches: ranking.totalMatches ?? 0, isTeamWeek: ranking.isTeamWeek ?? false })
         setHistoryData(history)
         setTotalPlayers(Array.isArray(players) ? players.length : 0)
       } catch (err) {
@@ -104,6 +104,7 @@ export default function Home() {
   const topPlayers   = historyData?.historicalPointsRanking?.slice(0, 3) ?? []
   const topWeekly    = rankingData?.ranking?.slice(0, 5) ?? []
   const totalWeeks   = historyData?.totalWeeks ?? 0
+  const isTeamWeek   = rankingData?.isTeamWeek ?? false
   const weeklyRanks  = computeRanks(topWeekly)
   const hofRanks     = computeRanks(topPlayers)
 
@@ -210,39 +211,83 @@ export default function Home() {
               </div>
             ) : (
               <div className="divide-y divide-white/5">
-                {topWeekly.map((player, idx) => {
+                {topWeekly.map((entry, idx) => {
                   const pos = weeklyRanks[idx]
                   const cfg = positionConfig[pos]
+
+                  /* ── SEMANA DE EQUIPOS ── */
+                  if (isTeamWeek) {
+                    return (
+                      <motion.div
+                        key={entry.teamId}
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-white/3 transition-colors"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 + idx * 0.06 }}
+                      >
+                        {/* Position */}
+                        <span className={`w-6 text-center text-sm font-bold flex-shrink-0 ${cfg?.color ?? 'text-muted-foreground'}`}>
+                          {cfg?.label ?? `#${pos}`}
+                        </span>
+
+                        {/* Team image or icon */}
+                        {entry.teamImage ? (
+                          <div className="w-8 h-8 rounded-xl overflow-hidden border border-white/10 flex-shrink-0 bg-black/30">
+                            <Image src={entry.teamImage} alt={entry.teamName} width={32} height={32} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-600/20 border border-white/10 flex items-center justify-center flex-shrink-0">
+                            <Users className="w-4 h-4 text-orange-400/60" />
+                          </div>
+                        )}
+
+                        {/* Team name + member chars */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate">{entry.teamName}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            {entry.members.map((m) => (
+                              <div key={m.id} className="relative w-5 h-5 rounded overflow-hidden border border-white/10 bg-black/30 flex-shrink-0" title={`${m.name}${m.characterName ? ` — ${m.characterName}` : ''}`}>
+                                {m.characterImage ? (
+                                  <Image src={m.characterImage} alt={m.characterName || m.name} fill className="object-contain" />
+                                ) : (
+                                  <Swords className="w-3 h-3 text-white/30 m-auto" />
+                                )}
+                              </div>
+                            ))}
+                            <p className="text-xs text-muted-foreground truncate ml-1">{entry.members.map(m => m.name).join(', ')}</p>
+                          </div>
+                        </div>
+
+                        {/* Points */}
+                        <Badge variant="outline" className={`text-xs font-semibold tabular-nums flex-shrink-0 ${cfg?.bg ?? 'border-white/10'}`}>
+                          {entry.totalPoints} pts
+                        </Badge>
+                      </motion.div>
+                    )
+                  }
+
+                  /* ── SEMANA INDIVIDUAL ── */
                   return (
                     <motion.div
-                      key={player.playerId}
+                      key={entry.playerId}
                       className="flex items-center gap-3 px-4 py-3 hover:bg-white/3 transition-colors group"
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.1 + idx * 0.06 }}
                     >
-                      {/* Position */}
                       <span className={`w-6 text-center text-sm font-bold flex-shrink-0 ${cfg?.color ?? 'text-muted-foreground'}`}>
                         {cfg?.label ?? `#${pos}`}
                       </span>
-
-                      {/* Character */}
-                      <CharacterAvatar src={player.characterImage} name={player.character} size="sm" />
-
-                      {/* Name + character */}
+                      <CharacterAvatar src={entry.characterImage} name={entry.character} size="sm" />
                       <div className="flex-1 min-w-0">
-                        <Link href={`/players/${player.playerId}`} className="font-semibold text-sm hover:text-orange-400 transition-colors truncate block">
-                          {player.playerName}
+                        <Link href={`/players/${entry.playerId}`} className="font-semibold text-sm hover:text-orange-400 transition-colors truncate block">
+                          {entry.playerName}
                         </Link>
-                        <p className="text-xs text-muted-foreground truncate">{player.character ?? 'Sin personaje'}</p>
+                        <p className="text-xs text-muted-foreground truncate">{entry.character ?? 'Sin personaje'}</p>
                       </div>
-
-                      {/* Points */}
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <Badge variant="outline" className={`text-xs font-semibold tabular-nums ${cfg?.bg ?? 'border-white/10'}`}>
-                          {player.totalPoints} pts
-                        </Badge>
-                      </div>
+                      <Badge variant="outline" className={`text-xs font-semibold tabular-nums ${cfg?.bg ?? 'border-white/10'}`}>
+                        {entry.totalPoints} pts
+                      </Badge>
                     </motion.div>
                   )
                 })}
