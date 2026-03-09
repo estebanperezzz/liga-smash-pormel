@@ -17,6 +17,57 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Jugador no encontrado' }, { status: 404 });
     }
 
+    // Semanas ganadas por este jugador
+    const wonWeeks = await prisma.week.findMany({
+      where: { winnerId: playerId },
+      select: { id: true, weekNumber: true, championImage: true, isTeamWeek: true },
+      orderBy: { weekNumber: 'asc' },
+    });
+
+    // Equipos en los que estuvo el jugador
+    const teamMemberships = await prisma.teamMember.findMany({
+      where: { playerId },
+      include: {
+        team: {
+          include: {
+            week: { select: { id: true, weekNumber: true, championImage: true, winnerTeamId: true } },
+            matchResults: true,
+            members: {
+              include: { player: { select: { id: true, name: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    const byTeam = teamMemberships.map((tm) => {
+      const team = tm.team;
+      const results = team.matchResults;
+      const totalMatches = results.length;
+      const top1 = results.filter((r) => r.position === 1).length;
+      const top3 = results.filter((r) => r.position <= 3).length;
+      const totalPoints = results.reduce((acc, r) => acc + r.points, 0);
+      const avgPosition =
+        totalMatches > 0
+          ? (results.reduce((acc, r) => acc + r.position, 0) / totalMatches).toFixed(1)
+          : '-';
+      return {
+        teamId: team.id,
+        teamName: team.name,
+        teamImage: team.image || null,
+        weekId: team.week.id,
+        weekNumber: team.week.weekNumber,
+        isChampion: team.week.winnerTeamId === team.id,
+        weekChampionImage: team.week.championImage || null,
+        members: team.members.map((m) => ({ id: m.player.id, name: m.player.name })),
+        totalMatches,
+        top1,
+        top3,
+        totalPoints,
+        avgPosition,
+      };
+    }).sort((a, b) => b.weekNumber - a.weekNumber);
+
     // Obtener todos los resultados del jugador
     const results = await prisma.matchResult.findMany({
       where: { playerId },
@@ -223,6 +274,8 @@ export async function GET(request, { params }) {
         avgPosition,
       },
       byCharacter: characterStatsArray,
+      byTeam,
+      wonWeeks,
     });
   } catch (error) {
     console.error('Error fetching player stats:', error);

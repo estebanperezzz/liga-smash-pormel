@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trophy, Medal, Award, Gamepad2, Target, TrendingUp, ArrowLeft, User, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trophy, Medal, Award, Gamepad2, Target, TrendingUp, ArrowLeft, User, Star, ChevronDown, ChevronUp, Users, Crown } from 'lucide-react';
 
 function getFavoriteCharacter(byCharacter) {
   if (!byCharacter || byCharacter.length === 0) return null;
@@ -15,7 +15,6 @@ function getFavoriteCharacter(byCharacter) {
   const maxMatches = Math.max(...byCharacter.map(c => c.matchesPlayed));
   const maxTop1 = Math.max(...byCharacter.map(c => c.top1));
 
-  // Normalizar ambas métricas entre 0 y 1, promediarlas
   return byCharacter
     .map(c => ({
       ...c,
@@ -32,6 +31,7 @@ export default function PlayerStatsPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedChar, setExpandedChar] = useState(null);
+  const [expandedTeam, setExpandedTeam] = useState(null);
 
   useEffect(() => {
     axios.get(`/api/players/${id}/stats`)
@@ -60,7 +60,7 @@ export default function PlayerStatsPage() {
     );
   }
 
-  const { player, general, byCharacter } = data;
+  const { player, general, byCharacter, byTeam = [], wonWeeks = [] } = data;
   const favorite = getFavoriteCharacter(byCharacter);
 
   return (
@@ -90,6 +90,62 @@ export default function PlayerStatsPage() {
           </p>
         </div>
       </div>
+
+      {/* Champion Banners */}
+      {wonWeeks.length > 0 && (
+        <div className="space-y-3">
+          {wonWeeks.map((week) => (
+            <button
+              key={week.id}
+              type="button"
+              onClick={() => router.push(`/week/${week.id}`)}
+              className="w-full text-left"
+            >
+              <div className="relative overflow-hidden rounded-xl border-2 border-yellow-500/60 bg-gradient-to-r from-yellow-950/60 via-orange-950/40 to-red-950/60 hover:border-yellow-400 hover:from-yellow-900/60 transition-all duration-200 cursor-pointer">
+                {/* Champion image background */}
+                {week.championImage && (
+                  <div className="absolute right-0 top-0 bottom-0 w-48 pointer-events-none">
+                    <Image
+                      src={week.championImage}
+                      alt={`Campeón semana ${week.weekNumber}`}
+                      fill
+                      className="object-cover object-center opacity-30"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-950/80 to-transparent" />
+                  </div>
+                )}
+                <div className="relative flex items-center gap-4 p-4">
+                  {/* Champion image (small) */}
+                  {week.championImage ? (
+                    <div className="relative h-16 w-16 rounded-full overflow-hidden border-2 border-yellow-400 flex-shrink-0 shadow-lg shadow-yellow-500/30">
+                      <Image
+                        src={week.championImage}
+                        alt={`Campeón semana ${week.weekNumber}`}
+                        fill
+                        className="object-cover object-center"
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-yellow-500/20 border-2 border-yellow-400 flex items-center justify-center flex-shrink-0 shadow-lg shadow-yellow-500/30">
+                      <Crown className="h-8 w-8 text-yellow-400" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-yellow-400 fill-yellow-400" />
+                      <span className="font-bold text-yellow-300 text-lg">¡Campeón!</span>
+                    </div>
+                    <p className="text-yellow-100/80 text-sm mt-0.5">
+                      Semana {week.weekNumber}{week.isTeamWeek ? ' (Equipos)' : ''}
+                    </p>
+                  </div>
+                  <div className="text-yellow-500/60 text-xs hidden sm:block">Ver semana →</div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* General Stats */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
@@ -150,7 +206,6 @@ export default function PlayerStatsPage() {
       {favorite && (
         <Card className="border-2 border-primary/30 overflow-hidden">
           <div className="flex items-center">
-            {/* Imagen grande del personaje */}
             <div className="relative h-36 w-36 flex-shrink-0 bg-gradient-to-br from-muted to-background">
               {favorite.characterImage ? (
                 <Image
@@ -166,7 +221,6 @@ export default function PlayerStatsPage() {
               )}
             </div>
 
-            {/* Info */}
             <div className="flex-1 p-6">
               <div className="flex items-center gap-2 mb-1">
                 <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
@@ -185,6 +239,167 @@ export default function PlayerStatsPage() {
               </div>
             </div>
           </div>
+        </Card>
+      )}
+
+      {/* Teams */}
+      {byTeam.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Equipos
+            </CardTitle>
+            <CardDescription>
+              Semanas de equipos en las que participó
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {byTeam.map((team) => {
+                const isOpen = expandedTeam === team.teamId;
+                return (
+                  <div key={team.teamId} className="rounded-xl border overflow-hidden">
+                    {/* Collapsed header — always visible */}
+                    <div
+                      className={`flex items-center gap-4 p-4 cursor-pointer transition-colors hover:bg-muted/50 ${isOpen ? 'bg-muted/20' : ''}`}
+                      onClick={() => setExpandedTeam(isOpen ? null : team.teamId)}
+                    >
+                      {/* Thumbnail */}
+                      <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-gradient-to-br from-muted to-background border-2 flex-shrink-0">
+                        {team.teamImage ? (
+                          <Image src={team.teamImage} alt={team.teamName} fill className="object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Users className="h-7 w-7 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Name + week */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-bold text-lg leading-tight">{team.teamName}</p>
+                          {team.isChampion && (
+                            <Badge className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 text-xs gap-1">
+                              <Trophy className="h-3 w-3" />
+                              Campeón
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          Semana {team.weekNumber} · {team.totalMatches} {team.totalMatches === 1 ? 'partida' : 'partidas'}
+                        </p>
+                      </div>
+
+                      {/* Stats inline */}
+                      <div className="hidden sm:flex items-center gap-5 flex-shrink-0">
+                        <div className="text-center">
+                          <div className="flex items-center gap-1 justify-center">
+                            <Trophy className="h-3.5 w-3.5 text-yellow-500" />
+                            <span className="font-bold text-yellow-500">{team.top1}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Top 1</p>
+                        </div>
+                        <div className="text-center">
+                          <div className="flex items-center gap-1 justify-center">
+                            <Medal className="h-3.5 w-3.5 text-orange-500" />
+                            <span className="font-bold text-orange-500">{team.top3}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Top 3</p>
+                        </div>
+                        <div className="text-center">
+                          <div className="flex items-center gap-1 justify-center">
+                            <Target className="h-3.5 w-3.5 text-primary" />
+                            <span className="font-bold text-primary">{team.totalPoints}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Puntos</p>
+                        </div>
+                      </div>
+
+                      <div className="text-muted-foreground ml-1 flex-shrink-0">
+                        {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                      </div>
+                    </div>
+
+                    {/* Expanded — portada + info */}
+                    {isOpen && (
+                      <div className="border-t">
+                        {/* Portada */}
+                        <div className="relative w-full h-64 bg-gradient-to-br from-muted/60 to-background overflow-hidden">
+                          {team.teamImage ? (
+                            <>
+                              <Image
+                                src={team.teamImage}
+                                alt={team.teamName}
+                                fill
+                                className="object-cover object-center"
+                              />
+                              {/* Gradient overlay for readability */}
+                              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+                            </>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Users className="h-20 w-20 text-muted-foreground/30" />
+                            </div>
+                          )}
+
+                          {/* Name overlay */}
+                          <div className="absolute bottom-0 left-0 right-0 p-4 flex items-end gap-3">
+                            <div>
+                              <p className="text-2xl font-bold text-white drop-shadow">{team.teamName}</p>
+                              <p className="text-sm text-white/70">Semana {team.weekNumber}</p>
+                            </div>
+                            {team.isChampion && (
+                              <Trophy className="h-7 w-7 text-yellow-400 fill-yellow-400 drop-shadow mb-1 flex-shrink-0" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Stats row */}
+                        <div className="grid grid-cols-4 divide-x border-b">
+                          {[
+                            { label: 'Partidas', value: team.totalMatches, color: '' },
+                            { label: 'Top 1', value: team.top1, color: 'text-yellow-500' },
+                            { label: 'Top 3', value: team.top3, color: 'text-orange-500' },
+                            { label: 'Puntos', value: team.totalPoints, color: 'text-primary' },
+                          ].map(({ label, value, color }) => (
+                            <div key={label} className="py-3 text-center">
+                              <p className={`text-xl font-bold ${color}`}>{value}</p>
+                              <p className="text-xs text-muted-foreground">{label}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Members + link */}
+                        <div className="p-4 flex items-center justify-between gap-4 flex-wrap">
+                          <div className="flex flex-wrap gap-2">
+                            {team.members.map((m) => (
+                              <Badge
+                                key={m.id}
+                                variant={m.id === Number(id) ? 'default' : 'outline'}
+                                className="text-sm cursor-pointer hover:bg-primary/20 px-3 py-1"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/players/${m.id}`); }}
+                              >
+                                {m.name}
+                              </Badge>
+                            ))}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); router.push(`/week/${team.weekId}`); }}
+                          >
+                            Ver semana {team.weekNumber} →
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
         </Card>
       )}
 
