@@ -245,6 +245,61 @@ export async function GET(request, { params }) {
       if (result.position <= 3) ws.top3 += 1;
     });
 
+    // Acumular stats de partidas de equipo en byCharacter
+    // Para cada membership, usamos el personaje de esa semana (currentCharacter)
+    teamMemberships.forEach((tm) => {
+      const weekId = tm.team.week.id;
+      const weekNumber = tm.team.week.weekNumber;
+      const weekInfo = weekCharacterMap[weekId];
+      if (!weekInfo) return;
+
+      const character = weekInfo.currentCharacter;
+      if (!character) return;
+
+      const charId = character.id;
+      if (!characterStats[charId]) {
+        characterStats[charId] = {
+          characterId: charId,
+          characterName: character.name,
+          characterImage: character.image || null,
+          characterSeries: character.series || null,
+          matchesPlayed: 0,
+          top1: 0,
+          top3: 0,
+          totalPoints: 0,
+          positions: [],
+          weekStats: {},
+        };
+      }
+
+      tm.team.matchResults.forEach((result) => {
+        const stat = characterStats[charId];
+        stat.matchesPlayed += 1;
+        stat.totalPoints += result.points;
+        stat.positions.push(result.position);
+        if (result.position === 1) stat.top1 += 1;
+        if (result.position <= 3) stat.top3 += 1;
+
+        if (!stat.weekStats[weekId]) {
+          stat.weekStats[weekId] = {
+            weekId,
+            weekNumber,
+            matchesPlayed: 0,
+            top1: 0,
+            top3: 0,
+            totalPoints: 0,
+            positions: [],
+          };
+        }
+        const ws = stat.weekStats[weekId];
+        ws.matchesPlayed += 1;
+        ws.totalPoints += result.points;
+        ws.positions.push(result.position);
+        if (result.position === 1) ws.top1 += 1;
+        if (result.position <= 3) ws.top3 += 1;
+      });
+    });
+
     // Calcular avgPosition y ordenar por partidas jugadas
     const characterStatsArray = Object.values(characterStats)
       .map(stat => ({

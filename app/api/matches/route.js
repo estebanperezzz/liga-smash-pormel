@@ -92,26 +92,52 @@ export async function GET(request) {
       );
     }
 
-    const matches = await prisma.match.findMany({
-      where: {
-        weekId: parseInt(weekId),
-      },
-      include: {
-        results: {
-          include: {
-            player: true,
+    const parsedWeekId = parseInt(weekId);
+
+    const [matches, week, weeklyCharacters] = await Promise.all([
+      prisma.match.findMany({
+        where: { weekId: parsedWeekId },
+        include: {
+          results: {
+            include: { player: { select: { id: true, name: true } } },
+            orderBy: { position: 'asc' },
           },
-          orderBy: {
-            position: 'asc',
+          teamResults: {
+            include: {
+              team: {
+                include: {
+                  members: {
+                    include: { player: { select: { id: true, name: true } } },
+                  },
+                },
+              },
+            },
+            orderBy: { position: 'asc' },
           },
         },
-      },
-      orderBy: {
-        playedAt: 'desc',
-      },
-    });
+        orderBy: { playedAt: 'desc' },
+      }),
+      prisma.week.findUnique({
+        where: { id: parsedWeekId },
+        select: { isTeamWeek: true },
+      }),
+      prisma.weeklyCharacter.findMany({
+        where: { weekId: parsedWeekId },
+        include: { character: { select: { id: true, name: true, image: true, series: true } } },
+      }),
+    ]);
 
-    return NextResponse.json(matches);
+    // Mapa playerId → character para inyectar en resultados individuales
+    const charMap = {};
+    weeklyCharacters.forEach((wc) => { charMap[wc.playerId] = wc.character; });
+
+    const enriched = matches.map((match) => ({
+      ...match,
+      isTeamWeek: week?.isTeamWeek ?? false,
+      results: match.results.map((r) => ({ ...r, character: charMap[r.playerId] ?? null })),
+    }));
+
+    return NextResponse.json(enriched);
   } catch (error) {
     console.error('Error fetching matches:', error);
     return NextResponse.json(
