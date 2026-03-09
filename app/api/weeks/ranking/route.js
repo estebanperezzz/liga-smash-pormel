@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 // GET /api/weeks/ranking?weekId=X - Obtener ranking de una semana específica
+// Si la semana es de equipos (isTeamWeek=true), devuelve ranking por equipo.
+// Si es semana normal, devuelve ranking por jugador (comportamiento original).
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -14,32 +16,73 @@ export async function GET(request) {
       );
     }
 
-    // Obtener todos los resultados de partidas de la semana
-    const matches = await prisma.match.findMany({
-      where: {
+    const week = await prisma.week.findUnique({ where: { id: weekId } });
+    if (!week) {
+      return NextResponse.json({ error: 'Semana no encontrada' }, { status: 404 });
+    }
+
+    // ── SEMANA DE EQUIPOS ─────────────────────────────────────────────────────
+    if (week.isTeamWeek) {
+      const matches = await prisma.match.findMany({
+        where: { weekId },
+        include: {
+          teamResults: {
+            include: {
+              team: {
+                include: {
+                  members: { include: { player: { select: { id: true, name: true } } } },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const teamStats = {};
+
+      matches.forEach((match) => {
+        match.teamResults.forEach((result) => {
+          if (!teamStats[result.teamId]) {
+            teamStats[result.teamId] = {
+              teamId: result.teamId,
+              teamName: result.team.name,
+              totalPoints: 0,
+              matchesPlayed: 0,
+              wins: 0,
+              members: result.team.members.map((m) => ({ id: m.player.id, name: m.player.name })),
+            };
+          }
+          teamStats[result.teamId].totalPoints += result.points;
+          teamStats[result.teamId].matchesPlayed += 1;
+          if (result.position === 1) teamStats[result.teamId].wins += 1;
+        });
+      });
+
+      const ranking = Object.values(teamStats).sort((a, b) => b.totalPoints - a.totalPoints);
+
+      return NextResponse.json({
         weekId,
-      },
+        isTeamWeek: true,
+        ranking,
+        totalMatches: matches.length,
+      });
+    }
+
+    // ── SEMANA NORMAL (comportamiento original) ───────────────────────────────
+    const matches = await prisma.match.findMany({
+      where: { weekId },
       include: {
         results: {
-          include: {
-            player: true,
-          },
+          include: { player: true },
         },
       },
     });
 
-    // Obtener personajes seleccionados en esta semana
     const weeklyCharacters = await prisma.weeklyCharacter.findMany({
-      where: {
-        weekId,
-      },
-      include: {
-        player: true,
-        character: true,
-      },
+      where: { weekId },
+      include: { player: true, character: true },
     });
 
-    // Crear mapa de personajes por jugador
     const playerCharacters = {};
     weeklyCharacters.forEach((wc) => {
       playerCharacters[wc.playerId] = {
@@ -49,7 +92,6 @@ export async function GET(request) {
       };
     });
 
-    // Calcular puntos totales por jugador
     const playerStats = {};
 
     matches.forEach((match) => {
@@ -77,13 +119,13 @@ export async function GET(request) {
       });
     });
 
-    // Convertir a array y ordenar por puntos
     const ranking = Object.values(playerStats).sort(
       (a, b) => b.totalPoints - a.totalPoints
     );
 
     return NextResponse.json({
       weekId,
+      isTeamWeek: false,
       ranking,
       totalMatches: matches.length,
     });

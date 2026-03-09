@@ -146,6 +146,9 @@ export default function NewMatchPage() {
   const [bulkCount, setBulkCount] = useState('');
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
 
+  // Estado modo equipos
+  const [orderedTeams, setOrderedTeams] = useState([]); // [{ teamId, teamName, members[], position }]
+
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
@@ -163,6 +166,18 @@ export default function NewMatchPage() {
       ]);
       setPlayers(playersRes.data);
       setWeekInfo(weekRes.data);
+
+      if (weekRes.data?.isTeamWeek && weekRes.data?.id) {
+        const teamsRes = await axios.get(`/api/teams?weekId=${weekRes.data.id}`);
+        setOrderedTeams(
+          teamsRes.data.map((t, i) => ({
+            teamId: t.id,
+            teamName: t.name,
+            members: t.members.map((m) => m.player.name),
+            position: i + 1,
+          }))
+        );
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -250,6 +265,49 @@ export default function NewMatchPage() {
     }
   };
 
+  // ── Handlers modo equipos ─────────────────────────────────────────────────
+
+  const moveTeamUp = (index) => {
+    if (index === 0) return;
+    const next = [...orderedTeams];
+    [next[index], next[index - 1]] = [next[index - 1], next[index]];
+    next[index].position = index + 1;
+    next[index - 1].position = index;
+    setOrderedTeams(next);
+  };
+
+  const moveTeamDown = (index) => {
+    if (index === orderedTeams.length - 1) return;
+    const next = [...orderedTeams];
+    [next[index], next[index + 1]] = [next[index + 1], next[index]];
+    next[index].position = index + 1;
+    next[index + 1].position = index + 2;
+    setOrderedTeams(next);
+  };
+
+  const handleTeamSubmit = async () => {
+    if (orderedTeams.length < 2) {
+      showToast('Debe haber al menos 2 equipos', 'error');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await axios.post('/api/team-matches', {
+        weekId: weekInfo.id,
+        teamResults: orderedTeams.map((t) => ({ teamId: t.teamId, position: t.position })),
+      });
+      // Resetear al orden original
+      setOrderedTeams((prev) => prev.map((t, i) => ({ ...t, position: i + 1 })));
+      showToast('¡Partida de equipos registrada!', 'success');
+    } catch (error) {
+      showToast(error.response?.data?.error || 'Error al registrar partida', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   const getAvailablePlayers = (currentIndex) => {
     const selectedIds = selectedPlayers
       .filter((_, i) => i !== currentIndex)
@@ -277,6 +335,129 @@ export default function NewMatchPage() {
       </div>
     );
   }
+
+  // ── Modo equipos ─────────────────────────────────────────────────────────
+  if (!loading && weekInfo?.isTeamWeek) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Registrar Partida</h1>
+          <p className="text-muted-foreground">Semana de equipos — ordená de 1° a último</p>
+        </div>
+
+        {orderedTeams.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <p className="font-medium">No hay equipos armados esta semana</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                El admin debe armar los equipos en{' '}
+                <button onClick={() => router.push('/equipos')} className="text-orange-400 hover:underline">
+                  /equipos
+                </button>{' '}
+                antes de registrar partidas.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Orden de equipos
+                </CardTitle>
+                <CardDescription>
+                  Usá las flechas para ordenar los equipos de mejor a peor posición
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {orderedTeams.map((team, index) => (
+                  <div key={team.teamId} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                    {/* Flechas */}
+                    <div className="flex flex-col gap-1">
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveTeamUp(index)} disabled={index === 0}>↑</Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveTeamDown(index)} disabled={index === orderedTeams.length - 1}>↓</Button>
+                    </div>
+
+                    {/* Posición */}
+                    <Badge variant="outline" className="text-lg px-3 py-1 w-12 justify-center shrink-0">
+                      {getPositionIcon(team.position)}
+                    </Badge>
+
+                    {/* Nombre del equipo + miembros */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">{team.teamName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{team.members.join(', ')}</p>
+                    </div>
+
+                    {/* Puntos preview */}
+                    <Badge variant="secondary" className="w-16 justify-center shrink-0">
+                      {orderedTeams.length - index + 1} pts
+                    </Badge>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Resumen */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Resumen</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {orderedTeams.map((team, index) => (
+                    <div key={team.teamId} className="flex justify-between items-center">
+                      <span className="text-sm">
+                        {getPositionIcon(team.position)} {team.teamName}
+                        <span className="text-muted-foreground text-xs ml-2">({team.members.join(', ')})</span>
+                      </span>
+                      <Badge>{orderedTeams.length - index + 1} puntos</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Submit */}
+            <div className="flex gap-3">
+              <Button className="flex-1" size="lg" onClick={handleTeamSubmit} disabled={submitting}>
+                <Save className="h-4 w-4 mr-2" />
+                {submitting ? 'Guardando...' : 'Guardar Partida'}
+              </Button>
+              <Button variant="outline" size="lg" onClick={() => router.push('/ranking')}>
+                Cancelar
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Toast */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, y: 60 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 60 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-xl border backdrop-blur-md text-sm font-medium text-foreground bg-background/95 ${
+                toast.type === 'success' ? 'border-green-500/30' : 'border-red-500/30'
+              }`}
+            >
+              {toast.type === 'success'
+                ? <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
+                : <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+              }
+              <span>{toast.message}</span>
+              <button onClick={() => setToast(null)} className="ml-2 text-muted-foreground hover:text-foreground transition-colors">✕</button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
