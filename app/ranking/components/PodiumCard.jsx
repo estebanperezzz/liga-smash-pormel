@@ -1,8 +1,8 @@
 'use client';
 
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Trophy, Medal, Award, User, Gamepad2 } from 'lucide-react';
+import { Trophy, Medal, Award, Gamepad2 } from 'lucide-react';
+import CharacterSplit from './CharacterSplit';
 
 // Slot only controls horizontal order — NOT height (that comes from displayPosition)
 const slotOrder = {
@@ -49,6 +49,12 @@ const positionStyles = {
   },
 };
 
+function resolveCharacters(player) {
+  if (player.characters?.length) return player.characters;
+  if (player.characterImage) return [{ name: player.character || '', image: player.characterImage }];
+  return [];
+}
+
 export default function PodiumCard({ player, position, displayPosition, imageFit }) {
   const router = useRouter();
 
@@ -63,33 +69,11 @@ export default function PodiumCard({ player, position, displayPosition, imageFit
         className={`relative ${dim.cardHeight} rounded-2xl overflow-hidden border ${pos.borderClass} ${pos.shadowClass} cursor-pointer transition-all duration-300 hover:scale-[1.03]`}
         onClick={() => router.push(`/players/${player.playerId}`)}
       >
-        {/* Character image (slot 1 como fondo) */}
-        {player.characterImage ? (
-          <Image
-            src={player.characterImage}
-            alt={player.character || ''}
-            fill
-            className={imageFit ?? 'object-contain object-bottom'}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-muted">
-            <User className="h-16 w-16 text-muted-foreground" />
-          </div>
-        )}
-
-        {/* Slot 2: thumbnail superpuesto arriba a la derecha del fondo */}
-        {player.characters?.length >= 2 && player.characters[1]?.image && (
-          <div className="absolute bottom-[5.5rem] right-3 z-20">
-            <div className="relative h-14 w-14 rounded-xl overflow-hidden border-2 border-white/20 bg-black/60 shadow-lg backdrop-blur-sm">
-              <Image
-                src={player.characters[1].image}
-                alt={player.characters[1].name}
-                fill
-                className="object-contain p-0.5"
-              />
-            </div>
-          </div>
-        )}
+        {/* Character image(s) con split diagonal */}
+        <CharacterSplit
+          characters={resolveCharacters(player)}
+          imageFit={imageFit ?? 'object-contain object-bottom'}
+        />
 
         {/* Color glow from bottom matching position */}
         <div className={`absolute inset-0 bg-gradient-to-t ${pos.glowOverlay} to-transparent`} />

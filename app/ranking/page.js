@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Trophy, Medal, User, RefreshCw, Lock, EyeOff, Users } from 'lucide-react';
 import PodiumCard from './components/PodiumCard';
+import CharacterSplit from './components/CharacterSplit';
 
 function isRankingBlocked() {
   const now = new Date();
@@ -373,26 +374,11 @@ export default function RankingPage() {
                     </TableCell>
 
                     <TableCell className="pl-2">
-                      <div className="flex gap-1.5">
-                        {player.characters?.length > 0 ? (
-                          player.characters.map((c, i) => (
-                            <div key={c.id ?? i} className="relative h-16 w-16 rounded-lg overflow-hidden bg-gradient-to-br from-muted to-background border-2 flex-shrink-0">
-                              {c.image ? (
-                                <Image src={c.image} alt={c.name} fill className="object-contain p-1" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <User className="h-8 w-8 text-muted-foreground" />
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-gradient-to-br from-muted to-background border-2">
-                            <div className="w-full h-full flex items-center justify-center">
-                              <User className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                          </div>
-                        )}
+                      <div className="relative h-16 w-20 rounded-lg overflow-hidden bg-gradient-to-br from-muted to-background border-2 flex-shrink-0">
+                        <CharacterSplit
+                          characters={player.characters}
+                          imageFit="object-contain p-1"
+                        />
                       </div>
                     </TableCell>
 
