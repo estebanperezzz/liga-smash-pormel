@@ -81,12 +81,16 @@ export async function GET() {
           .sort((a, b) => b.score - a.score)[0].character;
       }
 
-      const currentCharacter =
-        currentWeek
-          ? (weeklyCharacters.find((wc) => wc.weekId === currentWeek.id)?.character ?? null)
-          : null;
+      const currentCharacters = currentWeek
+        ? weeklyCharacters
+            .filter((wc) => wc.weekId === currentWeek.id)
+            .sort((a, b) => a.slot - b.slot)
+            .map((wc) => wc.character)
+        : [];
+      // Backward compat: primer personaje como currentCharacter para el buscador
+      const currentCharacter = currentCharacters[0] ?? null;
 
-      return { ...rest, wins, avgPosition, favoriteCharacter, currentCharacter, totalMatches: matchResults.length };
+      return { ...rest, wins, avgPosition, favoriteCharacter, currentCharacter, currentCharacters, totalMatches: matchResults.length };
     });
 
     return NextResponse.json(playersWithStats);

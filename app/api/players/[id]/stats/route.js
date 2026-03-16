@@ -72,9 +72,8 @@ export async function GET(request, { params }) {
     const results = await prisma.matchResult.findMany({
       where: { playerId },
       include: {
-        match: {
-          include: { week: true },
-        },
+        match: { include: { week: true } },
+        character: true,
       },
     });
 
@@ -115,29 +114,30 @@ export async function GET(request, { params }) {
       }
     });
 
-    // Para cada resultado, asignar el personaje correcto según el momento del partido
+    // Para cada resultado, asignar el personaje correcto.
+    // Si el resultado tiene characterId guardado (nuevo sistema), usarlo directamente.
+    // Si no (datos históricos), derivarlo del weekCharacterMap por fecha de cambio.
     const resultsWithCharacters = results.map((result) => {
-      const weekInfo = weekCharacterMap[result.match.weekId];
+      // Nuevo sistema: characterId guardado directamente en MatchResult
+      if (result.character) {
+        return result;
+      }
 
+      // Fallback histórico: derivar por semana y fecha de cambio
+      const weekInfo = weekCharacterMap[result.match.weekId];
       if (!weekInfo) {
         return { ...result, character: null };
       }
 
-      // Si hubo cambio en esa semana, verificar si el partido fue antes o después del cambio
       if (weekInfo.hasChanged && weekInfo.changeDate) {
         const matchDate = new Date(result.match.playedAt);
         const changeDate = new Date(weekInfo.changeDate);
-
         if (matchDate < changeDate) {
-          // Partido jugado ANTES del cambio → usar personaje original
           return { ...result, character: weekInfo.originalCharacter };
-        } else {
-          // Partido jugado DESPUÉS del cambio → usar personaje nuevo
-          return { ...result, character: weekInfo.currentCharacter };
         }
+        return { ...result, character: weekInfo.currentCharacter };
       }
 
-      // Sin cambio: usar el personaje actual
       return { ...result, character: weekInfo.currentCharacter };
     });
 

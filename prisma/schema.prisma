@@ -65,7 +65,8 @@ model Character {
   createdAt         DateTime           @default(now())
   
   // Relaciones
-  weeklySelections  WeeklyCharacter[]
+  weeklySelections    WeeklyCharacter[]
+  matchResults        MatchResult[]
   oldCharacterChanges CharacterChange[] @relation("OldCharacters")
   newCharacterChanges CharacterChange[] @relation("NewCharacters")
 }
@@ -170,10 +171,12 @@ model MatchResult {
   playerId          Int
   position          Int
   points            Int
-  
+  characterId       Int?               // Personaje usado en esta partida específica
+
   // Relaciones
   match             Match              @relation(fields: [matchId], references: [id], onDelete: Cascade)
   player            Player             @relation(fields: [playerId], references: [id])
+  character         Character?         @relation(fields: [characterId], references: [id])
   
   // Constraint: Un jugador solo puede tener una posición por partida
   @@unique([matchId, playerId])

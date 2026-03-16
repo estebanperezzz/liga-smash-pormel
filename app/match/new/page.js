@@ -23,18 +23,21 @@ function PlayerSearchInput({ availablePlayers, allPlayers, selectedPlayerId, onS
       const q = query.toLowerCase();
       return (
         p.name.toLowerCase().includes(q) ||
-        p.currentCharacter?.name.toLowerCase().includes(q)
+        p.currentCharacters?.some(c => c.name.toLowerCase().includes(q))
       );
     })
     .sort((a, b) => {
-      // Jugadores con personaje asignado primero
-      if (a.currentCharacter && !b.currentCharacter) return -1;
-      if (!a.currentCharacter && b.currentCharacter) return 1;
+      if (a.currentCharacters?.length && !b.currentCharacters?.length) return -1;
+      if (!a.currentCharacters?.length && b.currentCharacters?.length) return 1;
       return 0;
     });
 
-  const playerLabel = (p) =>
-    p.currentCharacter ? `${p.name} - ${p.currentCharacter.name}` : p.name;
+  const playerLabel = (p) => {
+    const chars = p.currentCharacters;
+    if (chars?.length === 2) return `${p.name} — ${chars[0].name} / ${chars[1].name}`;
+    if (chars?.length === 1) return `${p.name} — ${chars[0].name}`;
+    return p.name;
+  };
 
   const displayValue = selectedPlayer ? playerLabel(selectedPlayer) : query;
 
@@ -60,10 +63,10 @@ function PlayerSearchInput({ availablePlayers, allPlayers, selectedPlayerId, onS
   return (
     <div className="relative flex-1">
       <div className="relative">
-        {selectedPlayer?.currentCharacter?.image ? (
+        {selectedPlayer?.currentCharacters?.length > 0 ? (
           <img
-            src={selectedPlayer.currentCharacter.image}
-            alt={selectedPlayer.currentCharacter.name}
+            src={selectedPlayer.currentCharacters[0].image}
+            alt={selectedPlayer.currentCharacters[0].name}
             className="absolute left-2 top-1/2 -translate-y-1/2 h-6 w-6 object-contain pointer-events-none"
           />
         ) : (
@@ -100,24 +103,22 @@ function PlayerSearchInput({ availablePlayers, allPlayers, selectedPlayerId, onS
                   player.id === selectedPlayerId ? 'bg-accent font-semibold' : ''
                 }`}
               >
-                {/* Imagen del personaje */}
-                <div className="h-8 w-8 flex-shrink-0 flex items-center justify-center">
-                  {player.currentCharacter?.image ? (
-                    <img
-                      src={player.currentCharacter.image}
-                      alt={player.currentCharacter.name}
-                      className="h-8 w-8 object-contain"
-                    />
+                {/* Imágenes de personajes (hasta 2) */}
+                <div className="flex gap-0.5 flex-shrink-0">
+                  {player.currentCharacters?.length > 0 ? (
+                    player.currentCharacters.map(c => (
+                      <img key={c.id} src={c.image} alt={c.name} className="h-8 w-8 object-contain" />
+                    ))
                   ) : (
                     <div className="h-8 w-8 rounded bg-muted" />
                   )}
                 </div>
 
-                {/* Nombre + personaje */}
+                {/* Nombre + personajes */}
                 <span className="flex-1 truncate">
                   {player.name}
-                  {player.currentCharacter && (
-                    <span className="text-muted-foreground"> — {player.currentCharacter.name}</span>
+                  {player.currentCharacters?.length > 0 && (
+                    <span className="text-muted-foreground"> — {player.currentCharacters.map(c => c.name).join(' / ')}</span>
                   )}
                 </span>
               </button>
@@ -194,13 +195,14 @@ export default function NewMatchPage() {
     const slots = Array.from({ length: count }, (_, i) => ({
       playerId: null,
       position: i + 1,
+      characterId: null,
     }));
     setSelectedPlayers(slots);
     setBulkCount('');
   };
 
   const addPlayer = () => {
-    setSelectedPlayers([...selectedPlayers, { playerId: null, position: selectedPlayers.length + 1 }]);
+    setSelectedPlayers([...selectedPlayers, { playerId: null, position: selectedPlayers.length + 1, characterId: null }]);
   };
 
   const removePlayer = (index) => {
@@ -212,7 +214,20 @@ export default function NewMatchPage() {
 
   const updatePlayer = (index, playerId) => {
     const newPlayers = [...selectedPlayers];
-    newPlayers[index].playerId = playerId; // number | null, ya tipado desde PlayerSearchInput
+    newPlayers[index].playerId = playerId;
+    // Auto-seleccionar personaje si el jugador solo tiene 1
+    const player = players.find(p => p.id === playerId);
+    if (player?.currentCharacters?.length === 1) {
+      newPlayers[index].characterId = player.currentCharacters[0].id;
+    } else {
+      newPlayers[index].characterId = null;
+    }
+    setSelectedPlayers(newPlayers);
+  };
+
+  const updateCharacter = (index, characterId) => {
+    const newPlayers = [...selectedPlayers];
+    newPlayers[index].characterId = characterId;
     setSelectedPlayers(newPlayers);
   };
 
@@ -248,12 +263,16 @@ export default function NewMatchPage() {
       alert('No puedes seleccionar el mismo jugador dos veces');
       return;
     }
+    if (selectedPlayers.some(p => !p.characterId)) {
+      alert('Todos los jugadores deben tener un personaje seleccionado');
+      return;
+    }
 
     setSubmitting(true);
     try {
       await axios.post('/api/matches', {
         weekId: weekInfo.id,
-        results: selectedPlayers.map(p => ({ playerId: p.playerId, position: p.position }))
+        results: selectedPlayers.map(p => ({ playerId: p.playerId, position: p.position, characterId: p.characterId }))
       });
       setSelectedPlayers([]);
       setBulkCount('');
@@ -568,60 +587,71 @@ export default function NewMatchPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {selectedPlayers.map((player, index) => (
-              <div key={index} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                {/* Flechas */}
-                <div className="flex flex-col gap-1">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6"
-                    onClick={() => moveUp(index)}
-                    disabled={index === 0}
-                  >
-                    ↑
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6"
-                    onClick={() => moveDown(index)}
-                    disabled={index === selectedPlayers.length - 1}
-                  >
-                    ↓
-                  </Button>
+            {selectedPlayers.map((player, index) => {
+              const selectedPlayer = players.find(p => p.id === player.playerId);
+              const chars = selectedPlayer?.currentCharacters ?? [];
+              const needsCharPick = chars.length > 1;
+              return (
+                <div key={index} className="flex flex-col gap-2 p-3 bg-muted rounded-lg">
+                  <div className="flex items-center gap-3">
+                    {/* Flechas */}
+                    <div className="flex flex-col gap-1">
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveUp(index)} disabled={index === 0}>↑</Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveDown(index)} disabled={index === selectedPlayers.length - 1}>↓</Button>
+                    </div>
+
+                    {/* Posición */}
+                    <Badge variant="outline" className="text-lg px-3 py-1 w-12 justify-center shrink-0">
+                      {getPositionIcon(player.position)}
+                    </Badge>
+
+                    {/* Buscador */}
+                    <PlayerSearchInput
+                      availablePlayers={getAvailablePlayers(index)}
+                      allPlayers={players}
+                      selectedPlayerId={player.playerId}
+                      onSelect={(playerId) => updatePlayer(index, playerId)}
+                    />
+
+                    {/* Puntos preview */}
+                    {player.playerId && (
+                      <Badge variant="secondary" className="w-16 justify-center shrink-0">
+                        {selectedPlayers.length - index + 1} pts
+                      </Badge>
+                    )}
+
+                    {/* Eliminar slot */}
+                    <Button size="icon" variant="ghost" onClick={() => removePlayer(index)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+
+                  {/* Selector de personaje — solo si el jugador tiene 2 personajes */}
+                  {needsCharPick && (
+                    <div className="flex items-center gap-2 pl-[calc(1.5rem+3rem+0.75rem)]">
+                      <span className="text-xs text-muted-foreground shrink-0">¿Con cuál jugó?</span>
+                      <div className="flex gap-2">
+                        {chars.map(c => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => updateCharacter(index, c.id)}
+                            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium transition-colors ${
+                              player.characterId === c.id
+                                ? 'border-primary bg-primary/20 text-primary'
+                                : 'border-border hover:border-primary/50 text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            {c.image && <img src={c.image} alt={c.name} className="h-6 w-6 object-contain" />}
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                {/* Posición */}
-                <Badge variant="outline" className="text-lg px-3 py-1 w-12 justify-center shrink-0">
-                  {getPositionIcon(player.position)}
-                </Badge>
-
-                {/* Buscador */}
-                <PlayerSearchInput
-                  availablePlayers={getAvailablePlayers(index)}
-                  allPlayers={players}
-                  selectedPlayerId={player.playerId}
-                  onSelect={(playerId) => updatePlayer(index, playerId)}
-                />
-
-                {/* Puntos preview */}
-                {player.playerId && (
-                  <Badge variant="secondary" className="w-16 justify-center shrink-0">
-                    {selectedPlayers.length - index + 1} pts
-                  </Badge>
-                )}
-
-                {/* Eliminar slot */}
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => removePlayer(index)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            ))}
+              );
+            })}
 
             <Button variant="outline" className="w-full" onClick={addPlayer}>
               <Plus className="h-4 w-4 mr-2" />
@@ -639,16 +669,26 @@ export default function NewMatchPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {selectedPlayers.map((player, index) => (
-                player.playerId && (
+              {selectedPlayers.map((player, index) => {
+                if (!player.playerId) return null;
+                const selectedPlayer = players.find(p => p.id === player.playerId);
+                const char = selectedPlayer?.currentCharacters?.find(c => c.id === player.characterId);
+                return (
                   <div key={index} className="flex justify-between items-center">
-                    <span className="text-sm">
+                    <span className="text-sm flex items-center gap-1.5">
                       {getPositionIcon(player.position)} {getPlayerName(player.playerId)}
+                      {char && (
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <span>·</span>
+                          {char.image && <img src={char.image} alt={char.name} className="h-4 w-4 object-contain" />}
+                          {char.name}
+                        </span>
+                      )}
                     </span>
                     <Badge>{selectedPlayers.length - index + 1} puntos</Badge>
                   </div>
-                )
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
