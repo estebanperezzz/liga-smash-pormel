@@ -101,20 +101,26 @@ export async function GET(request) {
       include: { player: true, character: true },
     });
 
+    // Agrupar personajes por jugador (ordenados por slot: 1 primero, 2 después)
     const playerCharacters = {};
-    weeklyCharacters.forEach((wc) => {
-      playerCharacters[wc.playerId] = {
-        name: wc.character.name,
-        image: wc.character.image,
-        series: wc.character.series,
-      };
-    });
+    weeklyCharacters
+      .sort((a, b) => a.slot - b.slot)
+      .forEach((wc) => {
+        if (!playerCharacters[wc.playerId]) playerCharacters[wc.playerId] = [];
+        playerCharacters[wc.playerId].push({
+          id: wc.character.id,
+          name: wc.character.name,
+          image: wc.character.image,
+          series: wc.character.series,
+        });
+      });
 
     const playerStats = {};
 
     matches.forEach((match) => {
       match.results.forEach((result) => {
         if (!playerStats[result.playerId]) {
+          const chars = playerCharacters[result.playerId] ?? [];
           playerStats[result.playerId] = {
             playerId: result.playerId,
             playerName: result.player.name,
@@ -123,9 +129,12 @@ export async function GET(request) {
             top1: 0,
             top3: 0,
             positions: [],
-            character: playerCharacters[result.playerId]?.name || null,
-            characterImage: playerCharacters[result.playerId]?.image || null,
-            characterSeries: playerCharacters[result.playerId]?.series || null,
+            // Array de personajes (ambos slots)
+            characters: chars,
+            // Backward compat: slot 1 como campo principal (usado en PodiumCard como fondo)
+            character: chars[0]?.name || null,
+            characterImage: chars[0]?.image || null,
+            characterSeries: chars[0]?.series || null,
           };
         }
 

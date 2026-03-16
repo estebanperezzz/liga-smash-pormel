@@ -323,7 +323,7 @@ export default function RankingPage() {
                 <TableRow>
                   <TableHead className="w-[100px]">Posición</TableHead>
                   <TableHead>Jugador</TableHead>
-                  <TableHead className="w-[120px] pl-2">Personaje</TableHead>
+                  <TableHead className="w-[140px] pl-2">Personajes</TableHead>
                   <TableHead className="text-center w-[100px]">Partidas</TableHead>
                   <TableHead className="text-center w-[80px]">Top 1</TableHead>
                   <TableHead className="text-center w-[80px]">Top 3</TableHead>
@@ -356,16 +356,15 @@ export default function RankingPage() {
                             </Badge>
                           )}
                         </div>
-                        {player.character ? (
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="secondary" className="text-xs">
-                              {player.character}
-                            </Badge>
-                            {player.characterSeries && (
-                              <span className="text-xs text-muted-foreground">
-                                {player.characterSeries}
+                        {player.characters?.length > 0 ? (
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            {player.characters.map((c, i) => (
+                              <span key={c.id ?? i} className="flex items-center gap-1">
+                                {i > 0 && <span className="text-muted-foreground text-xs">/</span>}
+                                <Badge variant="secondary" className="text-xs">{c.name}</Badge>
+                                {c.series && <span className="text-xs text-muted-foreground">{c.series}</span>}
                               </span>
-                            )}
+                            ))}
                           </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">Sin personaje</span>
@@ -374,17 +373,24 @@ export default function RankingPage() {
                     </TableCell>
 
                     <TableCell className="pl-2">
-                      <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-gradient-to-br from-muted to-background border-2">
-                        {player.characterImage ? (
-                          <Image
-                            src={player.characterImage}
-                            alt={player.character || 'Character'}
-                            fill
-                            className="object-contain p-1"
-                          />
+                      <div className="flex gap-1.5">
+                        {player.characters?.length > 0 ? (
+                          player.characters.map((c, i) => (
+                            <div key={c.id ?? i} className="relative h-16 w-16 rounded-lg overflow-hidden bg-gradient-to-br from-muted to-background border-2 flex-shrink-0">
+                              {c.image ? (
+                                <Image src={c.image} alt={c.name} fill className="object-contain p-1" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <User className="h-8 w-8 text-muted-foreground" />
+                                </div>
+                              )}
+                            </div>
+                          ))
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <User className="h-8 w-8 text-muted-foreground" />
+                          <div className="relative h-16 w-16 rounded-lg overflow-hidden bg-gradient-to-br from-muted to-background border-2">
+                            <div className="w-full h-full flex items-center justify-center">
+                              <User className="h-8 w-8 text-muted-foreground" />
+                            </div>
                           </div>
                         )}
                       </div>

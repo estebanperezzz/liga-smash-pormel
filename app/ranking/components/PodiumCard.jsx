@@ -63,7 +63,7 @@ export default function PodiumCard({ player, position, displayPosition, imageFit
         className={`relative ${dim.cardHeight} rounded-2xl overflow-hidden border ${pos.borderClass} ${pos.shadowClass} cursor-pointer transition-all duration-300 hover:scale-[1.03]`}
         onClick={() => router.push(`/players/${player.playerId}`)}
       >
-        {/* Character image */}
+        {/* Character image (slot 1 como fondo) */}
         {player.characterImage ? (
           <Image
             src={player.characterImage}
@@ -74,6 +74,20 @@ export default function PodiumCard({ player, position, displayPosition, imageFit
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-muted">
             <User className="h-16 w-16 text-muted-foreground" />
+          </div>
+        )}
+
+        {/* Slot 2: thumbnail superpuesto arriba a la derecha del fondo */}
+        {player.characters?.length >= 2 && player.characters[1]?.image && (
+          <div className="absolute bottom-[5.5rem] right-3 z-20">
+            <div className="relative h-14 w-14 rounded-xl overflow-hidden border-2 border-white/20 bg-black/60 shadow-lg backdrop-blur-sm">
+              <Image
+                src={player.characters[1].image}
+                alt={player.characters[1].name}
+                fill
+                className="object-contain p-0.5"
+              />
+            </div>
           </div>
         )}
 
@@ -109,11 +123,13 @@ export default function PodiumCard({ player, position, displayPosition, imageFit
           <p className="text-white font-bold text-base leading-tight truncate drop-shadow">
             {player.playerName}
           </p>
-          {player.character && (
+          {player.characters?.length > 0 ? (
             <p className="text-white/50 text-xs mt-0.5 truncate">
-              {player.character}
+              {player.characters.map(c => c.name).join(' / ')}
             </p>
-          )}
+          ) : player.character ? (
+            <p className="text-white/50 text-xs mt-0.5 truncate">{player.character}</p>
+          ) : null}
           <div className="flex items-center justify-between mt-1.5">
             <div className="flex items-baseline gap-1">
               <span className="text-white font-extrabold text-2xl leading-none tabular-nums drop-shadow">
