@@ -2,7 +2,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import prisma from '@/lib/prisma'
-import { linkPlayerToUser, unlinkPlayer, setUserRole, setTeamWeek } from './actions'
+import { linkPlayerToUser, unlinkPlayer, setUserRole, setTeamWeek, setBlockPreviousWeekChars } from './actions'
 
 export const metadata = { title: 'Admin — Liga Smash Pormel' }
 
@@ -176,6 +176,54 @@ export default async function AdminPage() {
                     }`}
                   >
                     {currentWeek.isTeamWeek ? 'Desactivar equipos' : 'Activar equipos'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No hay semana activa en este momento.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Bloqueo personajes semana anterior */}
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/10">
+          <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+            Bloqueo de personajes
+          </h2>
+        </div>
+        <div className="px-6 py-4">
+          {currentWeek ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium text-sm">Regla: no repetir personaje de semana anterior</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {currentWeek.blockPreviousWeekChars
+                    ? 'Activa — los jugadores no pueden elegir personajes que usaron la semana pasada.'
+                    : 'Desactivada — los jugadores pueden elegir cualquier personaje sin restricción histórica.'}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
+                  currentWeek.blockPreviousWeekChars
+                    ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                    : 'bg-red-500/20 text-red-400 border-red-500/30'
+                }`}>
+                  {currentWeek.blockPreviousWeekChars ? 'Bloqueado' : 'Desbloqueado'}
+                </span>
+                <form action={setBlockPreviousWeekChars}>
+                  <input type="hidden" name="weekId" value={currentWeek.id} />
+                  <input type="hidden" name="blockPreviousWeekChars" value={String(!currentWeek.blockPreviousWeekChars)} />
+                  <button
+                    type="submit"
+                    className={`text-xs px-3 py-1 rounded border transition-colors ${
+                      currentWeek.blockPreviousWeekChars
+                        ? 'border-red-500/30 text-red-400 hover:bg-red-500/10'
+                        : 'border-green-500/30 text-green-400 hover:bg-green-500/10'
+                    }`}
+                  >
+                    {currentWeek.blockPreviousWeekChars ? 'Quitar bloqueo semanal' : 'Restaurar bloqueo semanal'}
                   </button>
                 </form>
               </div>

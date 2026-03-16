@@ -56,6 +56,21 @@ export async function setUserRole(formData) {
   revalidatePath('/admin')
 }
 
+export async function setBlockPreviousWeekChars(formData) {
+  await requireAdmin()
+  const weekId = Number.parseInt(formData.get('weekId'))
+  const blockPreviousWeekChars = formData.get('blockPreviousWeekChars') === 'true'
+  if (!weekId) return
+
+  await prisma.week.update({
+    where: { id: weekId },
+    data: { blockPreviousWeekChars },
+  })
+
+  revalidatePath('/admin')
+  revalidatePath('/characters')
+}
+
 export async function setTeamWeek(formData) {
   await requireAdmin()
   const weekId = Number.parseInt(formData.get('weekId'))

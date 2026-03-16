@@ -92,11 +92,12 @@ model Week {
   weekNumber        Int                @unique
   startDate         DateTime
   endDate           DateTime
-  winnerId          Int?
-  winnerTeamId      Int?
-  isTeamWeek        Boolean            @default(false)
-  championImage     String?
-  createdAt         DateTime           @default(now())
+  winnerId                Int?
+  winnerTeamId            Int?
+  isTeamWeek              Boolean            @default(false)
+  blockPreviousWeekChars  Boolean            @default(true)
+  championImage           String?
+  createdAt               DateTime           @default(now())
 
   // Relaciones
   winner            Player?            @relation(fields: [winnerId], references: [id])

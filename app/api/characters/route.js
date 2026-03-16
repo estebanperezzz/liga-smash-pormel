@@ -26,9 +26,7 @@ export async function GET(request) {
       });
 
       // Buscar todos los personajes que usó el jugador la semana anterior (ambos slots).
-      // Un jugador puede haber usado hasta 4 personajes entre slots y cambios:
-      //   - Los personajes finales de ambos slots (WeeklyCharacter)
-      //   - El personaje original de cualquier slot que haya cambiado (CharacterChange)
+      // Se omite si el admin desactivó el bloqueo para esta semana (blockPreviousWeekChars = false).
       const previousWeekCharacterIds = new Set();
       if (playerId) {
         const playerIdInt = Number.parseInt(playerId);
@@ -36,7 +34,7 @@ export async function GET(request) {
           where: { id: weekIdInt },
         });
 
-        if (currentWeek) {
+        if (currentWeek && currentWeek.blockPreviousWeekChars) {
           const previousWeek = await prisma.week.findFirst({
             where: { endDate: { lt: currentWeek.startDate } },
             orderBy: { endDate: 'desc' },
