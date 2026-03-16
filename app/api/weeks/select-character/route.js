@@ -4,6 +4,8 @@ import { isInWeekendGap } from '@/lib/utils';
 import { auth } from '@/auth';
 
 // POST /api/weeks/select-character - Seleccionar personaje para la semana
+// Body: { playerId, characterId, weekId }
+// El slot se asigna automáticamente: 1 si no hay selección, 2 si ya hay una
 export async function POST(request) {
   try {
     const session = await auth();
@@ -24,9 +26,9 @@ export async function POST(request) {
 
     const body = await request.json();
     const { playerId, characterId, weekId } = body;
-    const parsedPlayerId = parseInt(playerId);
-    const parsedCharacterId = parseInt(characterId);
-    const parsedWeekId = parseInt(weekId);
+    const parsedPlayerId = Number.parseInt(playerId);
+    const parsedCharacterId = Number.parseInt(characterId);
+    const parsedWeekId = Number.parseInt(weekId);
 
     if (!parsedPlayerId || !parsedCharacterId || !parsedWeekId) {
       return NextResponse.json(
@@ -51,44 +53,41 @@ export async function POST(request) {
       }
     }
 
-    // Verificar si el jugador ya seleccionó un personaje esta semana
-    const existingSelection = await prisma.weeklyCharacter.findUnique({
-      where: {
-        playerId_weekId: {
-          playerId: parsedPlayerId,
-          weekId: parsedWeekId,
-        },
-      },
+    // Obtener selecciones actuales del jugador esta semana
+    const existingSelections = await prisma.weeklyCharacter.findMany({
+      where: { playerId: parsedPlayerId, weekId: parsedWeekId },
     });
 
-    if (existingSelection) {
+    // Verificar que no haya llegado al límite de 2 personajes
+    if (existingSelections.length >= 2) {
       return NextResponse.json(
-        { error: 'Ya seleccionaste un personaje esta semana' },
+        { error: 'Ya seleccionaste 2 personajes esta semana' },
         { status: 409 }
       );
     }
 
-    // Verificar si el personaje ya fue seleccionado por otro jugador
-    const characterTaken = await prisma.weeklyCharacter.findUnique({
-      where: {
-        characterId_weekId: {
-          characterId: parsedCharacterId,
-          weekId: parsedWeekId,
-        },
-      },
-      include: {
-        player: true,
-      },
-    });
-
-    if (characterTaken) {
+    // Verificar que el jugador no tenga este personaje en el otro slot
+    if (existingSelections.some(s => s.characterId === parsedCharacterId)) {
       return NextResponse.json(
-        {
-          error: `Este personaje ya fue seleccionado por ${characterTaken.player.name}`,
-        },
+        { error: 'Ya tienes este personaje en otro slot' },
         { status: 409 }
       );
     }
+
+    // Verificar que el personaje no haya sido elegido ya por 2 jugadores
+    const charPickCount = await prisma.weeklyCharacter.count({
+      where: { characterId: parsedCharacterId, weekId: parsedWeekId },
+    });
+
+    if (charPickCount >= 2) {
+      return NextResponse.json(
+        { error: 'Este personaje ya fue seleccionado por 2 jugadores' },
+        { status: 409 }
+      );
+    }
+
+    // Determinar el slot automáticamente
+    const assignedSlot = existingSelections.length === 0 ? 1 : 2;
 
     // Crear la selección
     const selection = await prisma.weeklyCharacter.create({
@@ -96,6 +95,7 @@ export async function POST(request) {
         playerId: parsedPlayerId,
         characterId: parsedCharacterId,
         weekId: parsedWeekId,
+        slot: assignedSlot,
       },
       include: {
         player: true,

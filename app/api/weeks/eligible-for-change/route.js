@@ -8,8 +8,8 @@ function isWithinChangeWindow() {
   const minutes = now.getMinutes();
   const timeInMinutes = hour * 60 + minutes;
 
-  const tuesday14h = 2 * 60 + 0;   // Martes 14:00 en minutos del día
-  const friday18h = 18 * 60 + 0;   // Viernes 18:00 en minutos del día
+  const tuesday14h = 14 * 60 + 0;
+  const friday18h = 18 * 60 + 0;
 
   // Martes después de las 14:00
   if (day === 2 && timeInMinutes >= tuesday14h) return true;
@@ -24,7 +24,7 @@ function isWithinChangeWindow() {
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const weekId = parseInt(searchParams.get('weekId'));
+    const weekId = Number.parseInt(searchParams.get('weekId'));
 
     if (!weekId) {
       return NextResponse.json(
@@ -78,22 +78,37 @@ export async function GET(request) {
 
     const bottom3 = ranking.slice(0, 3);
 
-    const changes = await prisma.characterChange.findMany({
-      where: {
-        weekId,
-        playerId: { in: bottom3.map(p => p.playerId) },
-      },
-    });
+    // Obtener cambios ya realizados y selecciones actuales de los bottom 3
+    const bottom3Ids = bottom3.map(p => p.playerId);
+    const [changes, selections] = await Promise.all([
+      prisma.characterChange.findMany({
+        where: { weekId, playerId: { in: bottom3Ids } },
+      }),
+      prisma.weeklyCharacter.findMany({
+        where: { weekId, playerId: { in: bottom3Ids } },
+        include: { character: true },
+        orderBy: { slot: 'asc' },
+      }),
+    ]);
 
     const alreadyChanged = new Set(changes.map(c => c.playerId));
 
     const eligiblePlayers = bottom3
       .filter(p => !alreadyChanged.has(p.playerId))
-      .map(p => ({
-        playerId: p.playerId,
-        playerName: p.playerName,
-        currentPoints: p.totalPoints,
-      }));
+      .map(p => {
+        const playerSelections = selections.filter(s => s.playerId === p.playerId);
+        return {
+          playerId: p.playerId,
+          playerName: p.playerName,
+          currentPoints: p.totalPoints,
+          // Ambos personajes actuales con su slot
+          characters: playerSelections.map(s => ({
+            slot: s.slot,
+            characterId: s.characterId,
+            characterName: s.character.name,
+          })),
+        };
+      });
 
     return NextResponse.json({
       eligible: true,

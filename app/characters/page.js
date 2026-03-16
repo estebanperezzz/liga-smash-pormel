@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, Check, X, User, AlertCircle, RefreshCw, Clock, Lock } from 'lucide-react';
+import { Search, Check, X, User, AlertCircle, RefreshCw, Clock, Lock, Plus } from 'lucide-react';
 
 function PlayerSearchInput({ players, selectedPlayerId, onSelect }) {
   const [query, setQuery] = useState('');
@@ -84,7 +84,7 @@ function PlayerSearchInput({ players, selectedPlayerId, onSelect }) {
 
       {open && filtered.length === 0 && query.length > 0 && (
         <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg px-3 py-2 text-sm text-muted-foreground text-center">
-          No se encontrÃ³ &quot;{query}&quot;
+          No se encontró &quot;{query}&quot;
         </div>
       )}
     </div>
@@ -103,6 +103,9 @@ export default function CharactersPage() {
   const [eligibilityInfo, setEligibilityInfo] = useState(null);
   const [canChange, setCanChange] = useState(false);
   const [availabilityFilter, setAvailabilityFilter] = useState('all');
+  // null = no estamos en modo cambio; 1 o 2 = slot a reemplazar
+  const [changingSlot, setChangingSlot] = useState(null);
+
   const sessionPlayerId = session?.user?.playerId ?? null;
   const isAdmin = session?.user?.role === 'admin';
 
@@ -125,6 +128,8 @@ export default function CharactersPage() {
         fetchCharacters(weekInfo.id, null);
       }
     }
+    // Salir del modo cambio al cambiar de jugador
+    setChangingSlot(null);
   }, [selectedPlayer, weekInfo]);
 
   const fetchCharacters = async (weekId, playerId = null) => {
@@ -190,59 +195,108 @@ export default function CharactersPage() {
     }
 
     const character = characters.find(c => c.id === characterId);
+    if (!character) return;
 
     if (character.usedPreviousWeek) return;
 
+    // Selecciones actuales del jugador (de weekInfo)
+    const mySelections = (weekInfo?.weeklyCharacters ?? [])
+      .filter(wc => wc.playerId === selectedPlayer)
+      .sort((a, b) => a.slot - b.slot);
+
+    // ── Modo cambio activo ──────────────────────────────────────────────────
+    if (changingSlot !== null) {
+      // No se puede cambiar al mismo personaje que ya tiene en el otro slot
+      const otherSlot = mySelections.find(s => s.slot !== changingSlot);
+      if (otherSlot?.characterId === characterId) {
+        alert('Ya tienes ese personaje en el otro slot.');
+        return;
+      }
+
+      if (!character.available && !character.selectedBy?.includes(players.find(p => p.id === selectedPlayer)?.name)) {
+        // Verificar que no esté full (2 picks por otros)
+        const pickedByOthers = (character.selectedBy ?? []).filter(
+          name => name !== players.find(p => p.id === selectedPlayer)?.name
+        );
+        if (pickedByOthers.length >= 2) {
+          alert('Este personaje ya fue seleccionado por 2 jugadores.');
+          return;
+        }
+      }
+
+      const currentSlotChar = mySelections.find(s => s.slot === changingSlot);
+      const confirmed = confirm(
+        `¿Cambiar ${currentSlotChar?.character?.name ?? `Slot ${changingSlot}`} → ${character.name}?\n\nEsta es tu única oportunidad de cambio esta semana.`
+      );
+      if (!confirmed) return;
+
+      setSubmitting(true);
+      try {
+        await axios.post('/api/weeks/change-character', {
+          playerId: selectedPlayer,
+          weekId: weekInfo.id,
+          newCharacterId: characterId,
+          slot: changingSlot,
+        });
+        alert('¡Personaje cambiado exitosamente!');
+        setChangingSlot(null);
+        fetchData();
+        checkEligibility();
+      } catch (error) {
+        console.error('Error:', error);
+        alert(error.response?.data?.error || 'Error al cambiar personaje');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // ── Selección normal (agregar nuevo slot) ──────────────────────────────
+    if (mySelections.length >= 2) {
+      if (canChange) {
+        alert('Ya tienes 2 personajes. Usa el botón "Cambiar" sobre el personaje que quieras reemplazar.');
+      } else {
+        alert('Ya tienes 2 personajes esta semana.');
+      }
+      return;
+    }
+
     if (!character.available) {
-      alert(`Este personaje ya fue seleccionado por ${character.selectedBy}`);
+      alert('Este personaje ya fue seleccionado por 2 jugadores.');
       return;
     }
 
-    const mySelection = weekInfo?.weeklyCharacters?.find(
-      wc => wc.playerId === selectedPlayer
+    const playerName = players.find(p => p.id === selectedPlayer)?.name;
+    const slotNum = mySelections.length === 0 ? 1 : 2;
+    const confirmed = confirm(
+      `¿Confirmar selección de ${character.name} como Personaje ${slotNum} para ${playerName}?`
     );
-
-    let confirmMessage = '';
-    let endpoint = '';
-    let payload = {};
-
-    if (mySelection && canChange) {
-      confirmMessage = `¿Confirmar CAMBIO de ${mySelection.character.name} a ${character.name}?\n\nEsta es tu única oportunidad de cambio esta semana.`;
-      endpoint = '/api/weeks/change-character';
-      payload = {
-        playerId: selectedPlayer,
-        weekId: weekInfo.id,
-        newCharacterId: characterId
-      };
-    } else if (!mySelection) {
-      confirmMessage = `¿Confirmar selección de ${character.name} para ${players.find(p => p.id === selectedPlayer)?.name}?`;
-      endpoint = '/api/weeks/select-character';
-      payload = {
-        playerId: selectedPlayer,
-        characterId,
-        weekId: weekInfo.id
-      };
-    } else {
-      alert('Ya tienes un personaje seleccionado y no puedes cambiarlo');
-      return;
-    }
-
-    const confirmed = confirm(confirmMessage);
     if (!confirmed) return;
 
     setSubmitting(true);
-
     try {
-      await axios.post(endpoint, payload);
-      alert('¡Personaje actualizado exitosamente!');
+      await axios.post('/api/weeks/select-character', {
+        playerId: selectedPlayer,
+        characterId,
+        weekId: weekInfo.id,
+      });
+      alert('¡Personaje seleccionado exitosamente!');
       fetchData();
       checkEligibility();
     } catch (error) {
       console.error('Error:', error);
-      alert(error.response?.data?.error || 'Error al actualizar personaje');
+      alert(error.response?.data?.error || 'Error al seleccionar personaje');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Determinar si un personaje está tomado por el jugador actual
+  const getMySlotForCharacter = (characterId) => {
+    const mySelections = (weekInfo?.weeklyCharacters ?? []).filter(
+      wc => wc.playerId === selectedPlayer
+    );
+    return mySelections.find(s => s.characterId === characterId)?.slot ?? null;
   };
 
   const filteredCharacters = characters.filter(c => {
@@ -252,9 +306,9 @@ export default function CharactersPage() {
     return true;
   });
 
-  const mySelection = weekInfo?.weeklyCharacters?.find(
-    wc => wc.playerId === selectedPlayer
-  );
+  const mySelections = (weekInfo?.weeklyCharacters ?? [])
+    .filter(wc => wc.playerId === selectedPlayer)
+    .sort((a, b) => a.slot - b.slot);
 
   if (loading) {
     return (
@@ -272,7 +326,7 @@ export default function CharactersPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Selección de Personajes</h1>
         <p className="text-muted-foreground">
-          Elige tu main para la semana (solo uno por jugador)
+          Elige hasta 2 personajes para la semana
         </p>
       </div>
 
@@ -296,10 +350,10 @@ export default function CharactersPage() {
         <CardHeader>
           <CardTitle>Selecciona tu Jugador</CardTitle>
           <CardDescription>
-            Elige quién eres para seleccionar tu personaje
+            Elige quién eres para seleccionar tus personajes
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {isAdmin ? (
             <PlayerSearchInput
               players={players}
@@ -316,46 +370,111 @@ export default function CharactersPage() {
             </p>
           )}
 
-          {/* Current Selection */}
-          {mySelection && (
-            <div className="mt-4 p-4 bg-green-50 dark:bg-green-950 border border-green-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Check className="h-5 w-5 text-green-600" />
-                  <span className="font-medium">Tu personaje actual:</span>
-                </div>
-                <Badge className="text-lg px-3 py-1">
-                  {mySelection.character.name}
-                </Badge>
+          {/* Current Selections — 2 slots */}
+          {selectedPlayer && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">
+                Personajes esta semana ({mySelections.length}/2):
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {[1, 2].map((slotNum) => {
+                  const slotSelection = mySelections.find(s => s.slot === slotNum);
+                  const isChangingThis = changingSlot === slotNum;
+
+                  return (
+                    <div
+                      key={slotNum}
+                      className={`rounded-lg border-2 p-3 transition-all ${
+                        isChangingThis
+                          ? 'border-blue-500 bg-blue-950/30'
+                          : slotSelection
+                            ? 'border-green-500/50 bg-green-950/20'
+                            : 'border-dashed border-muted-foreground/30 bg-muted/10'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                          Slot {slotNum}
+                        </span>
+                        {slotSelection && (
+                          <Check className="h-3.5 w-3.5 text-green-500" />
+                        )}
+                      </div>
+
+                      {slotSelection ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-semibold leading-tight">
+                            {slotSelection.character?.name ?? '—'}
+                          </p>
+                          {/* Botón cambiar: solo si canChange y no se ha cambiado ya */}
+                          {canChange && !isChangingThis && (
+                            <button
+                              onClick={() => setChangingSlot(slotNum)}
+                              className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                              Cambiar
+                            </button>
+                          )}
+                          {isChangingThis && (
+                            <button
+                              onClick={() => setChangingSlot(null)}
+                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                              Cancelar
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">
+                          Sin selección
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              {!canChange && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Este es tu personaje para esta semana.
-                </p>
-              )}
             </div>
           )}
 
-          {/* Change Eligibility Info */}
-          {canChange && mySelection && (
-            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 rounded-lg">
+          {/* Banner modo cambio activo */}
+          {changingSlot !== null && (
+            <div className="p-4 bg-blue-950/40 border border-blue-500/40 rounded-lg">
+              <div className="flex items-start gap-3">
+                <RefreshCw className="h-5 w-5 text-blue-400 mt-0.5 animate-spin" />
+                <div>
+                  <p className="font-medium text-blue-200">
+                    Modo cambio activado — Slot {changingSlot}
+                  </p>
+                  <p className="text-sm text-blue-400 mt-1">
+                    Elige el nuevo personaje para reemplazar {mySelections.find(s => s.slot === changingSlot)?.character?.name}. Esta es tu única oportunidad de cambio esta semana.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Info elegibilidad */}
+          {canChange && changingSlot === null && mySelections.length > 0 && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 rounded-lg">
               <div className="flex items-start gap-3">
                 <RefreshCw className="h-5 w-5 text-blue-600 mt-0.5" />
                 <div>
                   <p className="font-medium text-blue-900 dark:text-blue-100">
-                    ¡Puedes cambiar de personaje!
+                    ¡Puedes cambiar un personaje!
                   </p>
                   <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                    Estás entre los últimos 3 del ranking. Tienes UNA oportunidad de cambiar tu personaje. Elige sabiamente.
+                    Estás entre los últimos 3 del ranking. Presiona &quot;Cambiar&quot; sobre el personaje que quieras reemplazar.
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Not Eligible Info */}
-          {eligibilityInfo && !eligibilityInfo.eligible && selectedPlayer && mySelection && (
-            <div className="mt-4 p-4 bg-muted border rounded-lg">
+          {/* No elegible */}
+          {eligibilityInfo && !eligibilityInfo.eligible && selectedPlayer && mySelections.length > 0 && (
+            <div className="p-4 bg-muted border rounded-lg">
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
@@ -370,7 +489,7 @@ export default function CharactersPage() {
         </CardContent>
       </Card>
 
-      {/* Search + Filters — ocultos en gap */}
+      {/* Search + Filters */}
       <div className={`flex flex-col sm:flex-row gap-3 ${weekInfo?.isWeekend ? 'pointer-events-none opacity-40' : ''}`}>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -402,29 +521,60 @@ export default function CharactersPage() {
         </div>
       </div>
 
-      {/* Characters Grid — deshabilitado en gap */}
+      {/* Characters Grid */}
       <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 ${weekInfo?.isWeekend ? 'pointer-events-none opacity-40' : ''}`}>
         {filteredCharacters.map((character) => {
-          const isMyCharacter = mySelection?.characterId === character.id;
-          const canSelect = character.available || isMyCharacter;
+          const mySlot = getMySlotForCharacter(character.id);
+          const isMyCharacter = mySlot !== null;
+          const pickCount = character.pickCount ?? 0;
+          const isFull = pickCount >= 2;
+          const isHalfTaken = pickCount === 1 && !isMyCharacter;
           const isRestricted = character.usedPreviousWeek && !isMyCharacter;
 
-          const stateBorderClass = isRestricted
-            ? 'border-amber-400/60 bg-amber-50/50 dark:bg-amber-950/20 cursor-not-allowed opacity-70'
-            : canSelect
-              ? 'border-border hover:border-primary hover:shadow-lg cursor-pointer bg-card hover:scale-105'
-              : 'border-muted bg-muted/30 cursor-not-allowed opacity-60';
+          // En modo cambio: no mostrar el personaje que ya está en el slot que NO estamos cambiando
+          const otherSlotChar = changingSlot !== null
+            ? mySelections.find(s => s.slot !== changingSlot)
+            : null;
+          const isOtherSlotChar = otherSlotChar?.characterId === character.id;
 
-          const myCharacterClass = isMyCharacter
-            ? 'border-green-500 bg-green-50 dark:bg-green-950 ring-2 ring-green-500'
-            : '';
+          // El personaje que estamos reemplazando
+          const isChangingThisChar = changingSlot !== null && mySlot === changingSlot;
+
+          // ¿El jugador ya completó sus 2 slots y NO estamos en modo cambio?
+          const allSlotsFull = mySelections.length >= 2 && changingSlot === null;
+
+          // Determinar si el botón está deshabilitado
+          const isDisabled =
+            submitting ||
+            isRestricted ||
+            isOtherSlotChar ||
+            (isFull && !isChangingThisChar && !isMyCharacter) ||
+            (allSlotsFull && !isMyCharacter);
+
+          // Clases visuales del borde
+          let cardClass = '';
+          if (isChangingThisChar) {
+            cardClass = 'border-blue-400 bg-blue-950/20 ring-2 ring-blue-500 cursor-pointer';
+          } else if (isMyCharacter) {
+            cardClass = 'border-green-500 bg-green-50 dark:bg-green-950 ring-2 ring-green-500';
+          } else if (isRestricted || isOtherSlotChar) {
+            cardClass = 'border-amber-400/60 bg-amber-50/50 dark:bg-amber-950/20 cursor-not-allowed opacity-70';
+          } else if (isFull) {
+            cardClass = 'border-muted bg-muted/30 cursor-not-allowed opacity-60';
+          } else if (isHalfTaken) {
+            cardClass = 'border-orange-400/60 hover:border-orange-400 hover:shadow-lg cursor-pointer bg-card hover:scale-105';
+          } else if (!isDisabled) {
+            cardClass = 'border-border hover:border-primary hover:shadow-lg cursor-pointer bg-card hover:scale-105';
+          } else {
+            cardClass = 'border-muted bg-muted/30 cursor-not-allowed opacity-60';
+          }
 
           return (
             <div key={character.id} className="relative group/card">
               <button
                 onClick={() => handleSelectCharacter(character.id)}
-                disabled={isRestricted || (!canSelect && !canChange) || submitting || (mySelection && !canChange && !isMyCharacter)}
-                className={`w-full relative rounded-lg border-2 transition-all overflow-hidden ${stateBorderClass} ${myCharacterClass}`}
+                disabled={isDisabled}
+                className={`w-full relative rounded-lg border-2 transition-all overflow-hidden ${cardClass}`}
               >
                 {/* Image Container */}
                 <div className="aspect-square relative bg-gradient-to-br from-muted to-background">
@@ -441,8 +591,8 @@ export default function CharactersPage() {
                     </div>
                   )}
 
-                  {/* Overlay: tomado por otro jugador esta semana */}
-                  {!canSelect && !isRestricted && (
+                  {/* Overlay: lleno (2/2) */}
+                  {isFull && !isMyCharacter && !isChangingThisChar && (
                     <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
                       <X className="h-8 w-8 text-destructive" />
                     </div>
@@ -457,12 +607,48 @@ export default function CharactersPage() {
                     </div>
                   )}
 
-                  {/* Indicator: personaje propio seleccionado */}
-                  {isMyCharacter && (
+                  {/* Indicador: personaje propio */}
+                  {isMyCharacter && !isChangingThisChar && (
                     <div className="absolute top-2 right-2">
                       <div className="bg-green-500 rounded-full p-1">
                         <Check className="h-4 w-4 text-white" />
                       </div>
+                    </div>
+                  )}
+
+                  {/* Indicador: slot siendo reemplazado */}
+                  {isChangingThisChar && (
+                    <div className="absolute top-2 right-2">
+                      <div className="bg-blue-500 rounded-full p-1">
+                        <RefreshCw className="h-4 w-4 text-white" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Badge disponibilidad: 1/2 tomado */}
+                  {isHalfTaken && !isRestricted && (
+                    <div className="absolute top-2 left-2">
+                      <span className="bg-orange-500/90 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                        1/2
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Badge: 2/2 lleno (solo sobre chars de otros) */}
+                  {isFull && !isMyCharacter && (
+                    <div className="absolute top-2 left-2">
+                      <span className="bg-destructive/90 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                        2/2
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Indicador slot propio */}
+                  {isMyCharacter && (
+                    <div className="absolute bottom-2 left-2">
+                      <span className="bg-green-600/90 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                        S{mySlot}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -470,13 +656,13 @@ export default function CharactersPage() {
                 {/* Name */}
                 <div className="p-3 border-t">
                   <p className={`text-sm font-medium text-center line-clamp-2 ${
-                    canSelect && !isRestricted ? 'text-foreground' : 'text-muted-foreground'
+                    !isDisabled && !isRestricted ? 'text-foreground' : 'text-muted-foreground'
                   }`}>
                     {character.name}
                   </p>
 
                   {/* Series */}
-                  {character.series && canSelect && !isRestricted && (
+                  {character.series && !isRestricted && !isFull && (
                     <p className="text-xs text-muted-foreground text-center mt-1 truncate">
                       {character.series}
                     </p>
@@ -488,13 +674,20 @@ export default function CharactersPage() {
                       Semana anterior
                     </p>
                   )}
+
+                  {/* Quién lo tiene (1/2) */}
+                  {isHalfTaken && !isRestricted && (
+                    <p className="text-xs text-orange-500 dark:text-orange-400 text-center mt-1 truncate">
+                      {character.selectedBy?.[0]}
+                    </p>
+                  )}
                 </div>
 
-                {/* Badge: tomado por otro jugador */}
-                {!canSelect && !isMyCharacter && !isRestricted && (
-                  <div className="absolute top-2 left-2">
+                {/* Badge: tomado por ambos (2/2) */}
+                {isFull && !isMyCharacter && !isRestricted && (
+                  <div className="absolute top-2 right-2">
                     <Badge variant="destructive" className="text-xs">
-                      {character.selectedBy}
+                      Lleno
                     </Badge>
                   </div>
                 )}
@@ -504,6 +697,22 @@ export default function CharactersPage() {
               {isRestricted && (
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover/card:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150 shadow-xl">
                   Personaje ya utilizado la semana anterior
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-gray-900" />
+                </div>
+              )}
+
+              {/* Tooltip 1/2 tomado */}
+              {isHalfTaken && !isRestricted && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover/card:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150 shadow-xl">
+                  Tomado por {character.selectedBy?.[0]} — queda 1 cupo
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-gray-900" />
+                </div>
+              )}
+
+              {/* Tooltip 2/2 lleno */}
+              {isFull && !isMyCharacter && !isRestricted && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover/card:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150 shadow-xl">
+                  {character.selectedBy?.join(' y ')} — sin cupos
                   <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-gray-900" />
                 </div>
               )}
@@ -518,10 +727,10 @@ export default function CharactersPage() {
           <CardTitle className="text-lg">Estadísticas</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="grid grid-cols-4 gap-4 text-center">
             <div>
               <p className="text-2xl font-bold text-primary">{characters.length}</p>
-              <p className="text-sm text-muted-foreground">Total Personajes</p>
+              <p className="text-sm text-muted-foreground">Total</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-green-600">
@@ -530,10 +739,16 @@ export default function CharactersPage() {
               <p className="text-sm text-muted-foreground">Disponibles</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-red-600">
-                {characters.filter(c => !c.available).length}
+              <p className="text-2xl font-bold text-orange-500">
+                {characters.filter(c => (c.pickCount ?? 0) === 1).length}
               </p>
-              <p className="text-sm text-muted-foreground">Seleccionados</p>
+              <p className="text-sm text-muted-foreground">1 cupo libre</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-red-600">
+                {characters.filter(c => (c.pickCount ?? 0) >= 2).length}
+              </p>
+              <p className="text-sm text-muted-foreground">Llenos</p>
             </div>
           </div>
         </CardContent>
@@ -541,4 +756,3 @@ export default function CharactersPage() {
     </div>
   );
 }
-

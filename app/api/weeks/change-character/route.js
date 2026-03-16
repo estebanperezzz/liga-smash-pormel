@@ -17,6 +17,9 @@ function isWithinChangeWindow() {
   return false;
 }
 
+// POST /api/weeks/change-character
+// Body: { playerId, weekId, newCharacterId, slot }
+// slot: 1 o 2 — qué personaje cambiar. Si el jugador solo tiene 1 personaje, se asume slot 1.
 export async function POST(request) {
   try {
     const session = await auth();
@@ -28,10 +31,10 @@ export async function POST(request) {
     }
     const isAdmin = session.user.role === 'admin';
 
-    const { playerId, weekId, newCharacterId } = await request.json();
-    const parsedPlayerId = parseInt(playerId);
-    const parsedWeekId = parseInt(weekId);
-    const parsedNewCharacterId = parseInt(newCharacterId);
+    const { playerId, weekId, newCharacterId, slot } = await request.json();
+    const parsedPlayerId = Number.parseInt(playerId);
+    const parsedWeekId = Number.parseInt(weekId);
+    const parsedNewCharacterId = Number.parseInt(newCharacterId);
 
     if (!parsedPlayerId || !parsedWeekId || !parsedNewCharacterId) {
       return NextResponse.json(
@@ -63,6 +66,7 @@ export async function POST(request) {
       );
     }
 
+    // Calcular ranking de la semana para verificar bottom 3
     const matches = await prisma.match.findMany({
       where: { weekId: parsedWeekId },
       include: {
@@ -98,6 +102,7 @@ export async function POST(request) {
       );
     }
 
+    // Verificar que el jugador no haya cambiado ya esta semana
     const existingChange = await prisma.characterChange.findUnique({
       where: {
         playerId_weekId: {
@@ -114,43 +119,67 @@ export async function POST(request) {
       );
     }
 
-    const currentSelection = await prisma.weeklyCharacter.findUnique({
-      where: {
-        playerId_weekId: {
-          playerId: parsedPlayerId,
-          weekId: parsedWeekId,
-        },
-      },
+    // Obtener todas las selecciones del jugador esta semana
+    const currentSelections = await prisma.weeklyCharacter.findMany({
+      where: { playerId: parsedPlayerId, weekId: parsedWeekId },
     });
 
+    if (currentSelections.length === 0) {
+      return NextResponse.json(
+        { error: 'No tienes personajes seleccionados esta semana' },
+        { status: 400 }
+      );
+    }
+
+    // Determinar qué slot cambiar
+    let targetSlot;
+    if (slot) {
+      targetSlot = Number.parseInt(slot);
+    } else {
+      // Si solo tiene 1 personaje, asumir slot 1
+      targetSlot = 1;
+    }
+
+    const currentSelection = currentSelections.find(s => s.slot === targetSlot);
     if (!currentSelection) {
       return NextResponse.json(
-        { error: 'No tienes un personaje seleccionado' },
+        { error: `No tienes personaje en el slot ${targetSlot}` },
         { status: 400 }
       );
     }
 
-    const characterTaken = await prisma.weeklyCharacter.findUnique({
+    // Verificar que el nuevo personaje no sea el mismo que ya tiene en el otro slot
+    const otherSlotSelection = currentSelections.find(s => s.slot !== targetSlot);
+    if (otherSlotSelection?.characterId === parsedNewCharacterId) {
+      return NextResponse.json(
+        { error: 'Ya tienes ese personaje en el otro slot' },
+        { status: 409 }
+      );
+    }
+
+    // Verificar que el nuevo personaje no haya sido elegido ya por 2 jugadores distintos
+    const charPicksByOthers = await prisma.weeklyCharacter.count({
       where: {
-        characterId_weekId: {
-          characterId: parsedNewCharacterId,
-          weekId: parsedWeekId,
-        },
+        characterId: parsedNewCharacterId,
+        weekId: parsedWeekId,
+        NOT: { playerId: parsedPlayerId },
       },
     });
 
-    if (characterTaken && characterTaken.playerId !== parsedPlayerId) {
+    if (charPicksByOthers >= 2) {
       return NextResponse.json(
-        { error: 'Este personaje ya está siendo usado por otro jugador' },
-        { status: 400 }
+        { error: 'Este personaje ya fue seleccionado por 2 jugadores' },
+        { status: 409 }
       );
     }
 
+    // Transacción: registrar cambio y actualizar WeeklyCharacter
     const result = await prisma.$transaction(async (tx) => {
       const change = await tx.characterChange.create({
         data: {
           playerId: parsedPlayerId,
           weekId: parsedWeekId,
+          slot: targetSlot,
           oldCharacterId: currentSelection.characterId,
           newCharacterId: parsedNewCharacterId,
           reason: 'bottom3_rule',
@@ -163,9 +192,10 @@ export async function POST(request) {
 
       const updated = await tx.weeklyCharacter.update({
         where: {
-          playerId_weekId: {
+          playerId_weekId_slot: {
             playerId: parsedPlayerId,
             weekId: parsedWeekId,
+            slot: targetSlot,
           },
         },
         data: {
@@ -184,6 +214,7 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       message: 'Personaje cambiado exitosamente',
+      slot: targetSlot,
       oldCharacter: result.change.oldCharacter.name,
       newCharacter: result.change.newCharacter.name,
       change: result.change,

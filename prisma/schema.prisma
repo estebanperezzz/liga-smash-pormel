@@ -114,18 +114,19 @@ model WeeklyCharacter {
   playerId          Int
   characterId       Int
   weekId            Int
+  slot              Int                @default(1) // 1 o 2 (cada jugador tiene hasta 2 personajes por semana)
   hasChanged        Boolean            @default(false)
   createdAt         DateTime           @default(now())
-  
+
   // Relaciones
   player            Player             @relation(fields: [playerId], references: [id])
   character         Character          @relation(fields: [characterId], references: [id])
   week              Week               @relation(fields: [weekId], references: [id])
-  
-  // Constraint: Un jugador solo puede seleccionar un personaje por semana
-  @@unique([playerId, weekId])
-  // Constraint: Un personaje no puede ser seleccionado por dos jugadores en la misma semana
-  @@unique([characterId, weekId])
+
+  // Constraint: Un jugador solo puede tener un personaje por slot por semana
+  @@unique([playerId, weekId, slot])
+  // Constraint: Un jugador no puede tener el mismo personaje en ambos slots
+  @@unique([playerId, characterId, weekId])
 }
 
 // Modelo de Cambios de Personaje (Historial)
@@ -133,18 +134,19 @@ model CharacterChange {
   id                Int                @id @default(autoincrement())
   playerId          Int
   weekId            Int
+  slot              Int                @default(1) // Qué slot fue cambiado (1 o 2)
   oldCharacterId    Int
   newCharacterId    Int
   changedAt         DateTime           @default(now())
   reason            String             @default("bottom3_rule")
-  
+
   // Relaciones
   player            Player             @relation(fields: [playerId], references: [id])
   week              Week               @relation(fields: [weekId], references: [id])
   oldCharacter      Character          @relation("OldCharacters", fields: [oldCharacterId], references: [id])
   newCharacter      Character          @relation("NewCharacters", fields: [newCharacterId], references: [id])
-  
-  // Solo un cambio por jugador por semana
+
+  // Solo un cambio por jugador por semana (independiente del slot)
   @@unique([playerId, weekId])
 }
 
