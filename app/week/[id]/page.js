@@ -6,8 +6,9 @@ import axios from 'axios';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trophy, Medal, Award, User, Gamepad2, ChevronLeft, Calendar, Users, Swords, Crown, Star } from 'lucide-react';
+import { Trophy, Medal, Award, Gamepad2, ChevronLeft, Calendar, Users, Swords, Crown, Star } from 'lucide-react';
 import PodiumCard from '@/app/ranking/components/PodiumCard';
+import CharacterSplit from '@/app/ranking/components/CharacterSplit';
 
 const positionConfig = {
   1: {
@@ -196,7 +197,11 @@ export default function WeekDetailPage() {
           <div className="flex items-end gap-3">
             <PodiumCard player={ranking[1]} position={2} />
             <PodiumCard
-              player={{ ...ranking[0], characterImage: week.championImage ?? ranking[0].characterImage }}
+              player={
+                week.championImage
+                  ? { ...ranking[0], characters: [{ image: week.championImage, name: ranking[0].playerName }] }
+                  : ranking[0]
+              }
               position={1}
               imageFit={week.championImage ? 'object-cover' : 'object-contain object-bottom'}
             />
@@ -259,26 +264,17 @@ export default function WeekDetailPage() {
                         <p className={`font-semibold text-base ${pos === 1 ? 'text-yellow-300' : ''}`}>
                           {player.playerName}
                         </p>
-                        {player.character && (
-                          <p className="text-xs text-muted-foreground mt-0.5">{player.character}</p>
+                        {player.characters?.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {player.characters.map((c) => c.name).join(' / ')}
+                          </p>
                         )}
                       </TableCell>
 
-                      {/* Character image */}
+                      {/* Character image(s) */}
                       <TableCell>
                         <div className="relative h-12 w-12 rounded-lg overflow-hidden bg-gradient-to-br from-muted to-background border border-border/50">
-                          {player.characterImage ? (
-                            <Image
-                              src={player.characterImage}
-                              alt={player.character || 'Character'}
-                              fill
-                              className="object-contain p-1"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <User className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                          )}
+                          <CharacterSplit characters={player.characters} imageFit="object-contain p-1" />
                         </div>
                       </TableCell>
 

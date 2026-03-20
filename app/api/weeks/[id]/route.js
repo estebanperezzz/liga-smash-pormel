@@ -36,15 +36,18 @@ export async function GET(request, { params }) {
       include: { player: true, character: true },
     });
 
-    // Mapa de personaje por jugador
+    // Mapa de personajes por jugador (hasta 2, ordenados por slot)
     const playerCharacters = {};
-    weeklyCharacters.forEach((wc) => {
-      playerCharacters[wc.playerId] = {
-        name: wc.character.name,
-        image: wc.character.image,
-        series: wc.character.series,
-      };
-    });
+    weeklyCharacters
+      .sort((a, b) => a.slot - b.slot)
+      .forEach((wc) => {
+        if (!playerCharacters[wc.playerId]) playerCharacters[wc.playerId] = [];
+        playerCharacters[wc.playerId].push({
+          name: wc.character.name,
+          image: wc.character.image,
+          series: wc.character.series,
+        });
+      });
 
     // Calcular stats por jugador
     const playerStats = {};
@@ -57,9 +60,7 @@ export async function GET(request, { params }) {
             totalPoints: 0,
             matchesPlayed: 0,
             positions: [],
-            character: playerCharacters[result.playerId]?.name ?? null,
-            characterImage: playerCharacters[result.playerId]?.image ?? null,
-            characterSeries: playerCharacters[result.playerId]?.series ?? null,
+            characters: playerCharacters[result.playerId] ?? [],
           };
         }
         playerStats[result.playerId].totalPoints += result.points;
