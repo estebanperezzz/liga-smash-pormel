@@ -18,6 +18,7 @@ export async function GET() {
       },
       include: {
         winner: { include: { user: { select: { name: true, image: true } } } },
+        season: { select: { id: true, number: true, name: true } },
         weeklyCharacters: {
           include: { character: true },
         },
@@ -84,6 +85,8 @@ export async function GET() {
         return {
           id: week.id,
           weekNumber: week.weekNumber,
+          seasonId: week.seasonId ?? null,
+          season: week.season ?? null,
           startDate: week.startDate,
           endDate: week.endDate,
           championImage: week.championImage ?? null,
@@ -174,8 +177,78 @@ export async function GET() {
       (a, b) => b.championships - a.championships
     );
 
+    // Agrupar semanas por temporada y computar rankings por temporada
+    const seasonMap = {};
+    weeksWithChampions.forEach((week) => {
+      const key = week.seasonId ?? 'unknown';
+      if (!seasonMap[key]) {
+        seasonMap[key] = {
+          seasonId: week.seasonId,
+          seasonNumber: week.season?.number ?? null,
+          seasonName: week.season?.name ?? null,
+          weeks: [],
+        };
+      }
+      seasonMap[key].weeks.push(week);
+    });
+
+    // Para cada temporada: puntos y campeonatos usando los datos brutos de completedWeeks
+    Object.values(seasonMap).forEach((season) => {
+      const seasonWeekIds = new Set(season.weeks.map((w) => w.id));
+      const fullSeasonWeeks = completedWeeks.filter((w) => seasonWeekIds.has(w.id));
+
+      // Points ranking de la temporada
+      const seasonPoints = {};
+      fullSeasonWeeks.forEach((week) => {
+        week.matches.forEach((match) => {
+          match.results.forEach((result) => {
+            if (!seasonPoints[result.playerId]) {
+              seasonPoints[result.playerId] = {
+                playerId: result.playerId,
+                playerName: result.player.name,
+                userImage: result.player.user?.image ?? null,
+                userName: result.player.user?.name ?? null,
+                totalPoints: 0,
+                matchesPlayed: 0,
+              };
+            }
+            seasonPoints[result.playerId].totalPoints += result.points;
+            seasonPoints[result.playerId].matchesPlayed += 1;
+          });
+        });
+      });
+      season.pointsRanking = Object.values(seasonPoints).sort(
+        (a, b) => b.totalPoints - a.totalPoints
+      );
+
+      // Champion ranking de la temporada (victorias semanales)
+      const seasonChampions = {};
+      season.weeks.forEach((week) => {
+        if (!week.winner) return;
+        const id = week.winner.id;
+        if (!seasonChampions[id]) {
+          seasonChampions[id] = {
+            playerId: week.winner.id,
+            playerName: week.winner.name,
+            userImage: week.winner.user?.image ?? null,
+            userName: week.winner.user?.name ?? null,
+            championships: 0,
+          };
+        }
+        seasonChampions[id].championships++;
+      });
+      season.championRanking = Object.values(seasonChampions).sort(
+        (a, b) => b.championships - a.championships
+      );
+    });
+
+    const seasons = Object.values(seasonMap).sort(
+      (a, b) => (b.seasonNumber ?? 0) - (a.seasonNumber ?? 0)
+    );
+
     return NextResponse.json({
       weeks: weeksWithChampions,
+      seasons,
       championRanking,
       historicalPointsRanking,
       totalWeeks: weeksWithChampions.length,

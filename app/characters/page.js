@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { usePauseRedirect } from '@/hooks/usePauseRedirect';
 import axios from 'axios';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -92,6 +93,7 @@ function PlayerSearchInput({ players, selectedPlayerId, onSelect }) {
 }
 
 export default function CharactersPage() {
+  usePauseRedirect();
   const { data: session } = useSession();
   const [characters, setCharacters] = useState([]);
   const [players, setPlayers] = useState([]);

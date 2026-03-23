@@ -85,3 +85,44 @@ export async function setTeamWeek(formData) {
   revalidatePath('/admin')
   revalidatePath('/equipos')
 }
+
+export async function activateSeason(formData) {
+  await requireAdmin()
+  const seasonNumber = Number.parseInt(formData.get('seasonNumber'))
+  if (!seasonNumber || seasonNumber < 1) return
+
+  await prisma.$transaction([
+    // Desactivar todas las temporadas existentes
+    prisma.season.updateMany({ data: { isActive: false } }),
+    // Upsert de la temporada objetivo
+    prisma.season.upsert({
+      where: { number: seasonNumber },
+      update: { isActive: true, endDate: null },
+      create: {
+        number: seasonNumber,
+        name: `Temporada ${seasonNumber}`,
+        isActive: true,
+        startDate: new Date(),
+      },
+    }),
+  ])
+
+  revalidatePath('/admin')
+  revalidatePath('/ranking')
+  revalidatePath('/history')
+}
+
+export async function deactivateSeason(formData) {
+  await requireAdmin()
+  const seasonId = Number.parseInt(formData.get('seasonId'))
+  if (!seasonId) return
+
+  await prisma.season.update({
+    where: { id: seasonId },
+    data: { isActive: false, endDate: new Date() },
+  })
+
+  revalidatePath('/admin')
+  revalidatePath('/ranking')
+  revalidatePath('/history')
+}

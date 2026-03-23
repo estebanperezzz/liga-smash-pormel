@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Trophy, Gamepad2, Users, History, Swords, Calendar,
-  List, Crown, TrendingUp, Star,
+  List, Crown, TrendingUp, Star, PauseCircle, Shield,
 } from 'lucide-react'
 
 // ─── Animation variants ──────────────────────────────────────────────────────
@@ -70,6 +70,7 @@ export default function Home() {
   const [rankingData, setRankingData] = useState(null)
   const [historyData, setHistoryData] = useState(null)
   const [totalPlayers, setTotalPlayers] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -84,13 +85,18 @@ export default function Home() {
         const history = await historyRes.json()
         const players = await playersRes.json()
 
-        // Fetch ranking for current week
-        const rankingRes = await fetch(`/api/weeks/ranking?weekId=${week.id}`)
-        const ranking = await rankingRes.json()
-
-        setRankingData({ week, ranking: ranking.ranking ?? [], totalMatches: ranking.totalMatches ?? 0, isTeamWeek: ranking.isTeamWeek ?? false })
         setHistoryData(history)
         setTotalPlayers(Array.isArray(players) ? players.length : 0)
+
+        if (week.isPaused) {
+          setIsPaused(true)
+          setRankingData({ week, ranking: [], totalMatches: 0, isTeamWeek: false })
+          return
+        }
+
+        const rankingRes = await fetch(`/api/weeks/ranking?weekId=${week.id}`)
+        const ranking = await rankingRes.json()
+        setRankingData({ week, ranking: ranking.ranking ?? [], totalMatches: ranking.totalMatches ?? 0, isTeamWeek: ranking.isTeamWeek ?? false })
       } catch (err) {
         console.error('Error fetching home data:', err)
       } finally {
@@ -107,6 +113,8 @@ export default function Home() {
   const isTeamWeek   = rankingData?.isTeamWeek ?? false
   const weeklyRanks  = computeRanks(topWeekly)
   const hofRanks     = computeRanks(topPlayers)
+
+  const PAUSED_ACTIONS = new Set(['/match/new', '/matches', '/characters'])
 
   return (
     <div className="space-y-14">
@@ -138,6 +146,38 @@ export default function Home() {
             priority
           />
         </motion.div>
+
+        {/* ── Banner de pausa ── */}
+        {isPaused && !loading && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="mx-auto max-w-lg"
+          >
+            <div className="relative overflow-hidden rounded-2xl border border-orange-500/30 bg-gradient-to-r from-orange-950/60 via-red-950/40 to-transparent px-6 py-5">
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/8 to-transparent pointer-events-none" />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-orange-500/50 via-red-500/30 to-transparent" />
+              <div className="relative flex flex-col items-center gap-3">
+                <div className="flex items-center gap-2.5">
+                  <PauseCircle className="h-5 w-5 text-orange-400 shrink-0" />
+                  <span className="font-bold text-orange-300 text-base">Liga en pausa</span>
+                </div>
+                <p className="text-sm text-white/60 leading-relaxed">
+                  La <span className="text-orange-400 font-medium">Temporada 1</span> ha finalizado.
+                  <br />
+                  La próxima temporada comenzará pronto.
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Shield className="h-3.5 w-3.5 text-orange-500/60" />
+                  <span className="text-xs text-orange-500/60 font-medium uppercase tracking-wider">
+                    Temporada 1 — Completada
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </motion.div>
 
       {/* ── Stats strip ───────────────────────────────────────────────────── */}
@@ -464,25 +504,28 @@ export default function Home() {
         >
           {quickActions.map((action) => {
             const Icon = action.icon
+            const blocked = isPaused && PAUSED_ACTIONS.has(action.href)
+            const inner = (
+              <div className={`group relative overflow-hidden rounded-xl border border-white/8 bg-card p-5 flex items-center gap-4 transition-all duration-300 ${blocked ? 'opacity-40 cursor-not-allowed' : `hover:scale-[1.02] hover:shadow-xl cursor-pointer ${action.hoverBorder}`}`}>
+                <div className={`absolute inset-0 bg-gradient-to-br ${action.hoverGradient} opacity-0 ${!blocked ? 'group-hover:opacity-100' : ''} transition-opacity duration-300`} />
+                <div className={`relative flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br ${action.iconGradient} flex items-center justify-center shadow-md`}>
+                  <Icon className="h-5 w-5 text-white" />
+                </div>
+                <div className="relative flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm group-hover:text-white transition-colors">{action.label}</h3>
+                  <p className="text-xs text-muted-foreground group-hover:text-white/70 transition-colors">{action.description}</p>
+                </div>
+                <div className="relative text-muted-foreground group-hover:text-white/50 transition-all group-hover:translate-x-1 duration-200">
+                  {blocked
+                    ? <PauseCircle className="h-3.5 w-3.5 text-orange-400/50" />
+                    : <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  }
+                </div>
+              </div>
+            )
             return (
               <motion.div key={action.href} variants={fadeUp}>
-                <Link href={action.href}>
-                  <div className={`group relative overflow-hidden rounded-xl border border-white/8 bg-card p-5 flex items-center gap-4 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl cursor-pointer ${action.hoverBorder}`}>
-                    <div className={`absolute inset-0 bg-gradient-to-br ${action.hoverGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-                    <div className={`relative flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br ${action.iconGradient} flex items-center justify-center shadow-md`}>
-                      <Icon className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="relative flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm group-hover:text-white transition-colors">{action.label}</h3>
-                      <p className="text-xs text-muted-foreground group-hover:text-white/70 transition-colors">{action.description}</p>
-                    </div>
-                    <div className="relative text-muted-foreground group-hover:text-white/50 transition-all group-hover:translate-x-1 duration-200">
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                        <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </div>
-                  </div>
-                </Link>
+                {blocked ? inner : <Link href={action.href}>{inner}</Link>}
               </motion.div>
             )
           })}

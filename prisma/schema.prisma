@@ -56,6 +56,20 @@ model VerificationToken {
 
 // ── Modelos del Juego ─────────────────────────────────────────────────────────
 
+// Modelo de Temporadas
+model Season {
+  id        Int       @id @default(autoincrement())
+  number    Int       @unique
+  name      String?
+  isActive  Boolean   @default(false)
+  startDate DateTime  @default(now())
+  endDate   DateTime?
+  createdAt DateTime  @default(now())
+
+  weeks     Week[]
+}
+
+
 // Modelo de Personajes de Smash Bros
 model Character {
   id                Int                @id @default(autoincrement())
@@ -90,7 +104,7 @@ model Player {
 // Modelo de Semanas
 model Week {
   id                Int                @id @default(autoincrement())
-  weekNumber        Int                @unique
+  weekNumber        Int
   startDate         DateTime
   endDate           DateTime
   winnerId                Int?
@@ -98,16 +112,20 @@ model Week {
   isTeamWeek              Boolean            @default(false)
   blockPreviousWeekChars  Boolean            @default(true)
   championImage           String?
+  seasonId                Int?
   createdAt               DateTime           @default(now())
 
   // Relaciones
   winner            Player?            @relation(fields: [winnerId], references: [id])
   winnerTeam        Team?              @relation("WeekWinnerTeam", fields: [winnerTeamId], references: [id])
+  season            Season?            @relation(fields: [seasonId], references: [id])
   weeklyCharacters  WeeklyCharacter[]
   matches           Match[]
   characterChanges  CharacterChange[]
   teams             Team[]
   teamMembers       TeamMember[]
+
+  @@unique([seasonId, weekNumber])
 }
 
 // Modelo de Selección de Personaje Semanal

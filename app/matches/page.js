@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { usePauseRedirect } from '@/hooks/usePauseRedirect';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,7 @@ function getPositionColor(position) {
 }
 
 export default function MatchesPage() {
+  usePauseRedirect();
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedMatches, setExpandedMatches] = useState(new Set());

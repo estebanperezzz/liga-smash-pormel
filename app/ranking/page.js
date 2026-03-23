@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trophy, Medal, User, RefreshCw, Lock, EyeOff, Users } from 'lucide-react';
+import { Trophy, Medal, User, RefreshCw, Lock, EyeOff, Users, Pause } from 'lucide-react';
 import PodiumCard from './components/PodiumCard';
 import CharacterSplit from './components/CharacterSplit';
 
@@ -45,6 +45,11 @@ export default function RankingPage() {
       const weekRes = await axios.get('/api/weeks/current');
       setWeekInfo(weekRes.data);
 
+      if (weekRes.data.isPaused) {
+        setLoading(false);
+        return;
+      }
+
       const rankingRes = await axios.get(`/api/weeks/ranking?weekId=${weekRes.data.id}`);
       setRanking(rankingRes.data.ranking);
 
@@ -71,6 +76,30 @@ export default function RankingPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Cargando ranking...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (weekInfo?.isPaused) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Ranking Semanal</h1>
+          <p className="text-muted-foreground">Liga en pausa</p>
+        </div>
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-6 text-center">
+          <div className="rounded-full bg-orange-500/10 p-6 border border-orange-500/20">
+            <Pause className="h-12 w-12 text-orange-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Liga en pausa</h2>
+            <p className="text-muted-foreground mt-2">
+              No hay temporada activa en este momento.
+              <br />
+              <span className="text-orange-400 font-medium">Volvé pronto para la próxima temporada.</span>
+            </p>
+          </div>
         </div>
       </div>
     );

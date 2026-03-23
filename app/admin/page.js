@@ -2,7 +2,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import prisma from '@/lib/prisma'
-import { linkPlayerToUser, unlinkPlayer, setUserRole, setTeamWeek, setBlockPreviousWeekChars } from './actions'
+import { linkPlayerToUser, unlinkPlayer, setUserRole, setTeamWeek, setBlockPreviousWeekChars, activateSeason, deactivateSeason } from './actions'
 
 export const metadata = { title: 'Admin — Liga Smash Pormel' }
 
@@ -11,7 +11,7 @@ export default async function AdminPage() {
   if (session?.user?.role !== 'admin') redirect('/')
 
   const now = new Date()
-  const [users, availablePlayers, currentWeek] = await Promise.all([
+  const [users, availablePlayers, currentWeek, seasons] = await Promise.all([
     prisma.user.findMany({
       include: { player: { select: { id: true, name: true } } },
       orderBy: { name: 'asc' },
@@ -24,7 +24,11 @@ export default async function AdminPage() {
       where: { startDate: { lte: now }, endDate: { gte: now } },
       orderBy: { startDate: 'desc' },
     }),
+    prisma.season.findMany({ orderBy: { number: 'asc' } }),
   ])
+
+  const activeSeason = seasons.find((s) => s.isActive) ?? null
+  const nextSeasonNumber = seasons.length > 0 ? Math.max(...seasons.map((s) => s.number)) + 1 : 1
 
   return (
     <div className="space-y-8">
@@ -230,6 +234,68 @@ export default async function AdminPage() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No hay semana activa en este momento.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Temporadas */}
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+          <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+            Temporadas
+          </h2>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
+            activeSeason
+              ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+              : 'bg-white/5 text-muted-foreground border-white/10'
+          }`}>
+            {activeSeason ? `Temporada ${activeSeason.number} activa` : 'Liga en pausa'}
+          </span>
+        </div>
+        <div className="divide-y divide-white/5">
+          {seasons.map((season) => (
+            <div key={season.id} className="px-6 py-3 flex items-center justify-between gap-4">
+              <div>
+                <p className="font-medium text-sm">{season.name ?? `Temporada ${season.number}`}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Inicio: {new Date(season.startDate).toLocaleDateString('es-AR')}
+                  {season.endDate ? ` — Fin: ${new Date(season.endDate).toLocaleDateString('es-AR')}` : ''}
+                </p>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${
+                season.isActive
+                  ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                  : 'bg-white/5 text-muted-foreground border-white/10'
+              }`}>
+                {season.isActive ? 'Activa' : 'Finalizada'}
+              </span>
+            </div>
+          ))}
+          {seasons.length === 0 && (
+            <div className="px-6 py-4 text-sm text-muted-foreground">No hay temporadas registradas.</div>
+          )}
+        </div>
+        <div className="px-6 py-4 border-t border-white/10">
+          {activeSeason ? (
+            <form action={deactivateSeason}>
+              <input type="hidden" name="seasonId" value={activeSeason.id} />
+              <button
+                type="submit"
+                className="text-xs px-3 py-1 rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
+              >
+                Pausar liga
+              </button>
+            </form>
+          ) : (
+            <form action={activateSeason}>
+              <input type="hidden" name="seasonNumber" value={nextSeasonNumber} />
+              <button
+                type="submit"
+                className="text-xs px-3 py-1 rounded border border-orange-500/30 text-orange-400 hover:bg-orange-500/10 transition-colors"
+              >
+                Activar Temporada {nextSeasonNumber}
+              </button>
+            </form>
           )}
         </div>
       </div>

@@ -9,6 +9,13 @@ export async function GET() {
   try {
     const now = new Date();
 
+    // ── CHEQUEO DE TEMPORADA ACTIVA ───────────────────────────────────────────
+    // Si no hay temporada activa, la liga está en pausa y no se crean semanas
+    const activeSeason = await prisma.season.findFirst({ where: { isActive: true } });
+    if (!activeSeason) {
+      return NextResponse.json({ isPaused: true });
+    }
+
     // ── PERÍODO DE GAP (Vie 14:30 → Lun 09:00) ──────────────────────────────
     if (isInWeekendGap(now)) {
       let lastWeek = await prisma.week.findFirst({
@@ -105,8 +112,8 @@ export async function GET() {
     // (ej: semana creada en UTC y ahora ejecutando en Argentina UTC-3).
     // En ese caso la reutilizamos y corregimos sus fechas en lugar de crear una nueva.
     if (!currentWeek) {
-      const existingWeek = await prisma.week.findUnique({
-        where: { weekNumber },
+      const existingWeek = await prisma.week.findFirst({
+        where: { weekNumber, seasonId: activeSeason.id },
         include: {
           winner: true,
           weeklyCharacters: {
@@ -133,6 +140,7 @@ export async function GET() {
             weekNumber,
             startDate: monday,
             endDate: friday,
+            seasonId: activeSeason.id,
           },
           include: {
             winner: true,

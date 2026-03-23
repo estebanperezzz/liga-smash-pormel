@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { usePauseRedirect } from '@/hooks/usePauseRedirect';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -138,6 +139,7 @@ function PlayerSearchInput({ availablePlayers, allPlayers, selectedPlayerId, onS
 }
 
 export default function NewMatchPage() {
+  usePauseRedirect();
   const router = useRouter();
   const [players, setPlayers] = useState([]);
   const [weekInfo, setWeekInfo] = useState(null);

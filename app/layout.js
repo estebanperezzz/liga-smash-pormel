@@ -3,8 +3,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Suspense } from 'react'
 import { auth, signIn, signOut } from '@/auth'
+import prisma from '@/lib/prisma'
 import Providers from './providers'
 import AuthToast from '@/components/AuthToast'
+import NavLinks from '@/components/NavLinks'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -19,8 +21,21 @@ export const metadata = {
   },
 }
 
+const NAV_ITEMS = [
+  { href: '/ranking',    label: 'Ranking' },
+  { href: '/match/new', label: 'Nueva Partida' },
+  { href: '/matches',   label: 'Partidas' },
+  { href: '/characters',label: 'Personajes' },
+  { href: '/players',   label: 'Jugadores' },
+  { href: '/history',   label: 'Historial' },
+]
+
 export default async function RootLayout({ children }) {
-  const session = await auth()
+  const [session, activeSeason] = await Promise.all([
+    auth(),
+    prisma.season.findFirst({ where: { isActive: true } }),
+  ])
+  const isPaused = !activeSeason
 
   return (
     <html lang="es" className="dark">
@@ -40,33 +55,11 @@ export default async function RootLayout({ children }) {
                 />
               </Link>
 
-              <nav className="flex items-center text-sm font-medium flex-1 flex-wrap gap-1">
-                {[
-                  { href: '/ranking', label: 'Ranking' },
-                  { href: '/match/new', label: 'Nueva Partida' },
-                  { href: '/matches', label: 'Partidas' },
-                  { href: '/characters', label: 'Personajes' },
-                  { href: '/players', label: 'Jugadores' },
-                  { href: '/history', label: 'Historial' },
-                  { href: '/equipos', label: 'Equipos' },
-                ].map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="px-3 py-1.5 rounded-md transition-all duration-200 hover:text-orange-400 hover:bg-orange-500/10 text-muted-foreground"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-                {session?.user?.role === 'admin' && (
-                  <Link
-                    href="/admin"
-                    className="px-3 py-1.5 rounded-md transition-all duration-200 hover:text-orange-400 hover:bg-orange-500/10 text-orange-500/70 font-semibold"
-                  >
-                    Admin
-                  </Link>
-                )}
-              </nav>
+              <NavLinks
+                isPaused={isPaused}
+                isAdmin={session?.user?.role === 'admin'}
+                items={NAV_ITEMS}
+              />
 
               {/* Auth */}
               <div className="flex items-center gap-3 ml-4">

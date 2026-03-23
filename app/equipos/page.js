@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { usePauseRedirect } from '@/hooks/usePauseRedirect'
 import axios from 'axios'
 import Image from 'next/image'
 import { Users, Plus, Trash2, Shield, Camera, X } from 'lucide-react'
@@ -9,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 
 export default function EquiposPage() {
+  usePauseRedirect()
   const { data: session } = useSession()
   const isAdmin = session?.user?.role === 'admin'
 
